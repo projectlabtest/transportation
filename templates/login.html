@@ -39,6 +39,11 @@
       </a>
     </div>
     <div style="text-align:center;margin-top:16px;">
+      <p class="hint">Visitors: scan this QR code to open the booking form</p>
+      <img src="{{ url_for('guest_booking_qr') }}" alt="Guest booking QR code"
+           width="160" height="160" style="margin:8px auto;display:block;">
+    </div>
+    <div style="text-align:center;margin-top:16px;">
       <a href="{{ url_for('download_android_app') }}" class="btn">
         DOWNLOAD ANDROID APP
       </a>

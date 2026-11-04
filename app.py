@@ -734,6 +734,17 @@ def register_routes(app):
             mimetype="application/vnd.android.package-archive",
             max_age=0)
 
+    @app.route("/qr/guest.png")
+    def guest_booking_qr():
+        import qrcode
+        url = request.url_root.rstrip("/") + url_for("guest_booking_form")
+        img = qrcode.make(url)
+        buf = io.BytesIO()
+        img.save(buf, "PNG")
+        buf.seek(0)
+        from flask import send_file
+        return send_file(buf, mimetype="image/png", max_age=0)
+
     @app.route("/qr/<code>.png")
     def booking_qr(code):
         conn = get_db()
