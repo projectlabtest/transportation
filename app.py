@@ -691,6 +691,7 @@ def _mobile_trip_payload(booking):
         "remarks": booking["remarks"],
         "requester_name": booking["requester_name"],
         "requester_phone": booking["requester_phone"],
+        "is_guest": bool(booking["is_guest"]),
         "requested_by": booking["requested_by"],
         "vehicle_type_needed": booking["vehicle_type_needed"],
         "assigned_vehicle_id": booking["assigned_vehicle_id"],
@@ -2336,6 +2337,143 @@ def register_routes(app):
                 return redirect(url_for("my_bookings"))
         return render_template("booking_form.html", vtypes=db.VEHICLE_TYPES,
                                natures=db.TRIP_NATURES, user=user)
+
+    # ---------------- Guest (visitor) booking, no account needed ---------------- #
+    @app.route("/bookings/guest", methods=["GET", "POST"])
+    def guest_booking_form():
+        conn = get_db()
+        if request.method == "POST":
+            guest_name = request.form.get("guest_name", "").strip()
+            guest_email = request.form.get("guest_email", "").strip()
+            guest_phone = request.form.get("guest_phone", "").strip()
+
+            # Use a system account for guest bookings (requested_by is NOT NULL).
+            sys_user = conn.execute(
+                "SELECT id FROM users WHERE username='__guest__'").fetchone()
+            if sys_user is None:
+                conn.execute(
+                    "INSERT INTO users (username, password_hash, full_name,"
+                    " role, active) VALUES (?,?,?,?,1)",
+                    ("__guest__",
+                     db.hash_password(secrets.token_hex(16)),
+                     "Guest Booking", "requester"))
+                conn.commit()
+                sys_user = conn.execute(
+                    "SELECT id FROM users WHERE username='__guest__'").fetchone()
+            guest_user_id = sys_user["id"]
+            purpose = request.form.get("purpose", "").strip()
+            passenger_count = max(1, _int_field(request.form, "passenger_count", 1))
+            vtype = request.form.get("vehicle_type_needed", "").strip()
+            if vtype not in db.VEHICLE_TYPES:
+                vtype = ""
+            pickup = request.form.get("pickup_location", "").strip()
+            dropoff = request.form.get("dropoff_location", "").strip()
+            dep_date = request.form.get("departure_date", "").strip()
+            dep_time = request.form.get("departure_time", "").strip()
+            flight_type = request.form.get("flight_type", "none").strip().lower()
+            if flight_type not in db.FLIGHT_TYPES:
+                flight_type = "none"
+            flight_number = request.form.get("flight_number", "").strip().upper()
+            flight_date = request.form.get("flight_date", "").strip()
+            flight_time = request.form.get("flight_time", "").strip()
+            is_rt = 1 if request.form.get("is_roundtrip") else 0
+            ret_date = request.form.get("return_date", "").strip()
+            ret_time = request.form.get("return_time", "").strip()
+            remarks = request.form.get("remarks", "").strip()
+
+            if not guest_name:
+                flash("Your name is required.", "error")
+            elif not purpose or not dep_date:
+                flash("Purpose and departure date are required.", "error")
+            elif flight_type != "none":
+                dd = flight_departure(flight_type, flight_date, flight_time)
+                if dd is None:
+                    flash("Enter the flight date and departure time.", "error")
+                else:
+                    dep_date, dep_time = dd
+
+            if guest_name and purpose and dep_date:
+                outbound, error = resolve_leg(request.form.get, "departure_date",
+                                              "departure_time")
+                return_leg = None
+                if not error and is_rt:
+                    return_leg, error = resolve_leg(request.form.get,
+                                                    "return_date", "return_time",
+                                                    "return_")
+                if error:
+                    flash(error, "error")
+                elif is_rt and (not return_leg or not return_leg["dep_date"]):
+                    flash("Return date is required for round trips.", "error")
+                else:
+                    if outbound is None:
+                        outbound = {"dep_date": dep_date, "dep_time": dep_time,
+                                    "flight_type": flight_type,
+                                    "flight_number": flight_number,
+                                    "flight_date": flight_date,
+                                    "flight_time": flight_time}
+                    pickup_coords = None
+                    raw_lat = request.form.get("pickup_lat", "").strip()
+                    raw_lng = request.form.get("pickup_lng", "").strip()
+                    if raw_lat and raw_lng:
+                        try:
+                            pickup_coords = (float(raw_lat), float(raw_lng))
+                        except ValueError:
+                            pickup_coords = None
+                    if pickup_coords is None:
+                        pickup_coords = parse_coordinates(pickup)
+                    if pickup_coords and not (-90 <= pickup_coords[0] <= 90
+                                              and -180 <= pickup_coords[1] <= 180):
+                        pickup_coords = None
+
+                    legs = [("outbound", outbound, pickup, dropoff, pickup_coords)]
+                    if return_leg:
+                        legs.append(("return", return_leg, dropoff, pickup, None))
+                    codes = []
+                    for label, leg, leg_pickup, leg_dropoff, coords in legs:
+                        code = db.next_booking_code(conn)
+                        cur = conn.execute(
+                            "INSERT INTO bookings (booking_code, requested_by,"
+                            " purpose, nature_of_trip, department,"
+                            " passenger_count, vehicle_type_needed,"
+                            " pickup_location, pickup_lat, pickup_lng,"
+                            " dropoff_location, departure_date,"
+                            " departure_time, is_roundtrip, return_date,"
+                            " return_time, remarks, flight_type, flight_number,"
+                            " flight_date, flight_time, status,"
+                            " is_guest, guest_name, guest_email, guest_phone)"
+                            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,"
+                            "?,?,?,?)",
+                            (code, guest_user_id, purpose, "personal", guest_name,
+                             passenger_count, vtype,
+                             leg_pickup,
+                             coords[0] if coords else None,
+                             coords[1] if coords else None,
+                             leg_dropoff,
+                             leg["dep_date"], leg["dep_time"], 0, "", "",
+                             remarks, leg["flight_type"], leg["flight_number"],
+                             leg["flight_date"], leg["flight_time"], "pending",
+                             1, guest_name, guest_email, guest_phone))
+                        db.log_action(conn, cur.lastrowid, "REQUESTED", guest_user_id,
+                                      f"Guest booking by {guest_name}"
+                                      f" ({guest_email or guest_phone})"
+                                      f" | {vtype or 'Vehicle type to be set by coordinator'}"
+                                      f" for {passenger_count} pax")
+                        codes.append(code)
+                    conn.commit()
+                    if return_leg:
+                        flash(f"Round trip submitted: {codes[0]} (outbound) and "
+                              f"{codes[1]} (return). Save these numbers.", "ok")
+                    else:
+                        flash(f"Booking {codes[0]} submitted! Save this number "
+                              f"to track your trip.", "ok")
+                    return redirect(url_for("guest_booking_done",
+                                            code=codes[0]))
+        return render_template("guest_booking.html",
+                               vtypes=db.VEHICLE_TYPES)
+
+    @app.route("/bookings/guest/done/<code>")
+    def guest_booking_done(code):
+        return render_template("guest_booking_done.html", code=code)
 
     @app.route("/bookings/<int:booking_id>/cancel", methods=["POST"])
     @role_required("requester", "admin")

@@ -47,7 +47,11 @@
       <tr><th>Purpose</th><td>{{ b.purpose }}</td></tr>
       <tr><th>Nature of Trip</th><td><span class="pill">{{ (b.nature_of_trip or 'official')|capitalize }}</span></td></tr>
       <tr><th>{{ 'Charged to' if (b.nature_of_trip or 'official') == 'personal' else 'Department / Account' }}</th><td>{{ b.department or '—' }}</td></tr>
-      <tr><th>Requester</th><td>{{ b.requester_name }}</td></tr>
+      <tr><th>Requester</th><td>{{ b.requester_name }}{% if b.is_guest %} <span class="pill">GUEST</span>{% endif %}</td></tr>
+      {% if b.is_guest %}
+      <tr><th>Guest Email</th><td>{{ b.guest_email or '—' }}</td></tr>
+      <tr><th>Guest Phone</th><td>{{ b.guest_phone or '—' }}</td></tr>
+      {% endif %}
       <tr><th>Passengers</th><td>{{ b.passenger_count }}</td></tr>
       <tr><th>Vehicle Type Needed</th><td><span class="pill">{{ b.vehicle_type_needed or '— (coordinator to set)' }}</span></td></tr>
       <tr><th>Pickup</th><td>

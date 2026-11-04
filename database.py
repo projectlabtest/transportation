@@ -49,7 +49,11 @@ CREATE TABLE IF NOT EXISTS vehicles (
 CREATE TABLE IF NOT EXISTS bookings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     booking_code TEXT UNIQUE NOT NULL,
-    requested_by INTEGER NOT NULL REFERENCES users(id),
+    requested_by INTEGER REFERENCES users(id),
+    is_guest INTEGER DEFAULT 0,
+    guest_name TEXT DEFAULT '',
+    guest_email TEXT DEFAULT '',
+    guest_phone TEXT DEFAULT '',
     purpose TEXT NOT NULL,
     nature_of_trip TEXT DEFAULT 'official',
     department TEXT DEFAULT '',
@@ -251,6 +255,10 @@ def init_db():
             ("flight_number", "TEXT DEFAULT ''"),
             ("flight_date", "TEXT DEFAULT ''"),
             ("flight_time", "TEXT DEFAULT ''"),
+            ("is_guest", "INTEGER DEFAULT 0"),
+            ("guest_name", "TEXT DEFAULT ''"),
+            ("guest_email", "TEXT DEFAULT ''"),
+            ("guest_phone", "TEXT DEFAULT ''"),
         ])
         _ensure_columns(conn, "booking_assignments", [
             ("dropped_off_at", "TEXT"),
@@ -409,8 +417,10 @@ def fetch_vehicles(conn, vtype=None, status=None, available_only=False):
 def fetch_bookings(conn, status=None, requested_by=None, driver_id=None,
                    date_from=None, date_to=None):
     q = ("SELECT b.*,"
-         " ru.full_name AS requester_name,"
-         " ru.phone_whatsapp AS requester_phone,"
+         " COALESCE(CASE WHEN b.is_guest=1 THEN b.guest_name END, ru.full_name)"
+         " AS requester_name,"
+         " COALESCE(CASE WHEN b.is_guest=1 THEN b.guest_phone END,"
+         " ru.phone_whatsapp) AS requester_phone,"
          " v.plate_number, v.vehicle_name, v.vehicle_type,"
          " du.full_name AS driver_name,"
          " du.phone_whatsapp AS driver_phone,"
@@ -419,7 +429,7 @@ def fetch_bookings(conn, status=None, requested_by=None, driver_id=None,
          " THEN 'MAIN GUARD HOUSE - SG. ' || UPPER(b.guard_name)"
          " END AS guard_approval"
          " FROM bookings b"
-         " JOIN users ru ON ru.id = b.requested_by"
+         " LEFT JOIN users ru ON ru.id = b.requested_by"
          " LEFT JOIN vehicles v ON v.id = b.assigned_vehicle_id"
          " LEFT JOIN users du ON du.id = b.assigned_driver_id"
          " LEFT JOIN users au ON au.id = b.approved_by"
@@ -449,8 +459,10 @@ def fetch_bookings(conn, status=None, requested_by=None, driver_id=None,
 def fetch_booking(conn, booking_id):
     return conn.execute(
         "SELECT b.*,"
-        " ru.full_name AS requester_name,"
-        " ru.phone_whatsapp AS requester_phone,"
+        " COALESCE(CASE WHEN b.is_guest=1 THEN b.guest_name END, ru.full_name)"
+        " AS requester_name,"
+        " COALESCE(CASE WHEN b.is_guest=1 THEN b.guest_phone END,"
+        " ru.phone_whatsapp) AS requester_phone,"
         " v.plate_number, v.vehicle_name, v.vehicle_type,"
         " v.capacity AS vehicle_capacity,"
         " du.full_name AS driver_name,"
@@ -460,7 +472,7 @@ def fetch_booking(conn, booking_id):
         " THEN 'MAIN GUARD HOUSE - SG. ' || UPPER(b.guard_name)"
         " END AS guard_approval"
         " FROM bookings b"
-        " JOIN users ru ON ru.id = b.requested_by"
+        " LEFT JOIN users ru ON ru.id = b.requested_by"
         " LEFT JOIN vehicles v ON v.id = b.assigned_vehicle_id"
         " LEFT JOIN users du ON du.id = b.assigned_driver_id"
         " LEFT JOIN users au ON au.id = b.approved_by"

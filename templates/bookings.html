@@ -42,7 +42,7 @@
       {% for b in bookings %}
       <tr data-booking-id="{{ b.id }}">
         <td><a href="{{ url_for('booking_detail', booking_id=b.id) }}"><strong>{{ b.booking_code }}</strong></a></td>
-        <td>{{ b.requester_name }}</td>
+        <td>{{ b.requester_name }}{% if b.is_guest %} <span class="pill">GUEST</span>{% endif %}</td>
         <td>
           {{ b.purpose }}
           <span class="pill">{{ (b.nature_of_trip or 'official')|capitalize }}</span>
