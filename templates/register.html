@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}CREATE ACCOUNT - TRANSPORT{% endblock %}
+{% block content %}
+<div class="loginwrap">
+  <div class="login-card">
+    <div class="login-title">CREATE ACCOUNT</div>
+    <div class="login-sub">Requester / Driver</div>
+
+    {% if dev_code %}
+    <div class="flash info" style="text-align:left;">
+      <strong>DEV CODE (SMTP not configured):</strong> {{ dev_code }}
+      <div class="hint">Enter this in the Verification Code field below to test.</div>
+    </div>
+    {% endif %}
+    {% if sent_to %}
+    <div class="hint" style="text-align:center;margin-bottom:8px;">
+      Code sent to: <strong>{{ sent_to }}</strong>
+    </div>
+    {% endif %}
+
+    <form method="post">
+      <label>Full Name</label>
+      <input name="full_name" value="{{ request.form.get('full_name', '') }}" required autofocus>
+
+      <label>Email Address</label>
+      <input type="email" name="email" value="{{ request.form.get('email', '') }}"
+             placeholder="name@example.com" required>
+
+      <label>Role</label>
+      <select name="role">
+        <option value="requester" {{ 'selected' if request.form.get('role') != 'driver' }}>Requester / Staff</option>
+        <option value="driver" {{ 'selected' if request.form.get('role') == 'driver' }}>Driver</option>
+      </select>
+
+      <label>Username</label>
+      <input name="username" value="{{ request.form.get('username', '') }}"
+             required minlength="3" maxlength="30" pattern="[A-Za-z0-9._-]+"
+             title="Letters, numbers, dot, underscore o dash lang">
+
+      <label>Password</label>
+      <input type="password" name="password" required minlength="6">
+
+      <label>Confirm Password</label>
+      <input type="password" name="confirm_password" required minlength="6">
+
+      <label>WhatsApp Number (optional)</label>
+      <input name="phone_whatsapp" value="{{ request.form.get('phone_whatsapp', '') }}"
+             placeholder="09XXXXXXXXX">
+
+      <label>Verification Code (from email)</label>
+      <div class="rowbtns" style="gap:8px;flex-wrap:nowrap;">
+        <input name="code" inputmode="numeric" maxlength="6" placeholder="6-digit code"
+               value="{{ request.form.get('code', '') }}" style="flex:1;">
+        <button type="submit" name="action" value="send_code" class="btn small"
+                formnovalidate style="white-space:nowrap;">SEND CODE</button>
+      </div>
+      <p class="hint">Send the code to your email first, enter it, then click CREATE ACCOUNT.</p>
+
+      <button type="submit" name="action" value="create" class="btn primary"
+              style="width:100%;margin-top:12px;">CREATE ACCOUNT</button>
+    </form>
+
+    <div class="hint" style="margin-top:12px;text-align:center;">
+      Only Requester and Driver accounts can be created here. Guard, coordinator, and admin accounts are created by the admin.
+    </div>
+
+    <div style="text-align:center;margin-top:12px;">
+      <a href="{{ url_for('login') }}" class="btn small">ALREADY HAVE AN ACCOUNT? LOG IN</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% block title %}BOOKING QUEUE - TRANSPORT{% endblock %}
+{% set active = 'bookings' %}
+{% block content %}
+<div class="pagehead">
+  <h1>Booking Queue</h1>
+  <div class="stats mini">
+    <div class="statcard"><div class="statnum">{{ stats.pending }}</div><div class="statlabel">Pending</div></div>
+    <div class="statcard"><div class="statnum">{{ stats.approved }}</div><div class="statlabel">Approved</div></div>
+    <div class="statcard blue"><div class="statnum">{{ stats.assigned }}</div><div class="statlabel">Assigned</div></div>
+    <div class="statcard orange"><div class="statnum">{{ stats.accepted }}</div><div class="statlabel">Accepted</div></div>
+    <div class="statcard orange"><div class="statnum">{{ stats.on_the_way }}</div><div class="statlabel">Driver On The Way</div></div>
+    <div class="statcard green"><div class="statnum">{{ stats.in_progress }}</div><div class="statlabel">In Progress</div></div>
+  </div>
+</div>
+
+<form method="get" class="toolbar">
+  <select name="status">
+    <option value="">All Statuses</option>
+    {% for s in ['pending','approved','assigned','accepted','on_the_way','in_progress','completed','declined','cancelled'] %}
+    <option value="{{ s }}" {{ 'selected' if status==s }}>{{ 'DRIVER ON THE WAY' if s=='on_the_way' else s|replace('_',' ')|upper }}</option>
+    {% endfor %}
+  </select>
+  <label class="hint">From</label>
+  <input type="date" name="date_from" value="{{ date_from }}">
+  <label class="hint">To</label>
+  <input type="date" name="date_to" value="{{ date_to }}">
+  <button type="submit" class="btn primary">FILTER</button>
+  <a href="{{ url_for('bookings') }}" class="btn small">CLEAR</a>
+</form>
+
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>Code</th><th>Requester</th><th>Purpose</th><th>Pax</th>
+        <th>Type Needed</th><th>Route</th><th>Departure</th>
+        <th>Assigned</th><th>Status</th><th>Driver Arrival</th><th>Client Pickup</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in bookings %}
+      <tr data-booking-id="{{ b.id }}">
+        <td><a href="{{ url_for('booking_detail', booking_id=b.id) }}"><strong>{{ b.booking_code }}</strong></a></td>
+        <td>{{ b.requester_name }}</td>
+        <td>
+          {{ b.purpose }}
+          <span class="pill">{{ (b.nature_of_trip or 'official')|capitalize }}</span>
+          {% if b.department %}
+          <br><span class="hint">{{ b.department }}</span>
+          {% endif %}
+        </td>
+        <td>{{ b.passenger_count }}</td>
+        <td><span class="pill">{{ b.vehicle_type_needed or '—' }}</span></td>
+        <td class="small">
+          {{ b.pickup_location }} → {{ b.dropoff_location }}
+          {% if b.pickup_location and b.dropoff_location %}
+          <br><a target="_blank" rel="noopener"
+                 href="{{ maps_directions_url(b.dropoff_location, maps_point(b.pickup_location, b.pickup_lat, b.pickup_lng)) }}">OPEN ROUTE IN MAPS</a>
+          {% endif %}
+        </td>
+        <td class="small">{{ b.departure_date }} {{ b.departure_time }}</td>
+        <td class="small">
+          {% set asg = assignments_by_booking.get(b.id, []) %}
+          {% if asg %}
+            {% for a in asg %}
+            <div>
+              {{ a.vehicle_name }} ({{ a.plate_number }})<br>
+              <span class="hint">{{ a.driver_name }} · {{ a.status|replace('_',' ')|upper }}</span>
+            </div>
+            {% endfor %}
+          {% else %}—{% endif %}
+        </td>
+        <td><span class="badge {{ b.status }}">{{ 'DRIVER ON THE WAY' if b.status == 'on_the_way' else b.status|replace('_',' ')|upper }}</span></td>
+        <td>
+          {% set asg = assignments_by_booking.get(b.id, []) %}
+          {% set arrived = asg|selectattr('driver_arrived_at')|list %}
+          {% if b.driver_arrived_at or arrived %}
+          <span class="badge completed" data-arrival-status-for="{{ b.id }}">
+            {% if b.driver_arrived_at %}ARRIVED · {{ b.driver_arrived_at }}
+            {% else %}{{ arrived|length }}/{{ asg|length }} ARRIVED · {{ arrived[0].driver_arrived_at }}{% endif %}
+          </span>
+          {% else %}
+          <span class="badge unassigned" data-arrival-status-for="{{ b.id }}">NOT ARRIVED</span>
+          {% endif %}
+        </td>
+        <td>
+          {% set asg = assignments_by_booking.get(b.id, []) %}
+          {% set picked = asg|selectattr('picked_up_at')|list %}
+          {% if b.picked_up_at or picked %}
+          <span class="badge completed" data-pickup-status-for="{{ b.id }}">
+            {% if b.picked_up_at %}PICKED UP · {{ b.picked_up_at }}
+            {% else %}{{ picked|length }}/{{ asg|length }} PICKED UP · {{ picked[0].picked_up_at }}{% endif %}
+          </span>
+          {% else %}
+          <span class="badge unassigned" data-pickup-status-for="{{ b.id }}">NOT PICKED UP</span>
+          {% endif %}
+        </td>
+        <td class="rowbtns">
+          <a class="btn small" href="{{ url_for('print_trip_ticket', booking_id=b.id) }}">PRINT TICKET</a>
+          {% if b.status == 'on_the_way' and not b.driver_arrived_at %}
+          <a class="btn small primary"
+             href="{{ url_for('booking_detail', booking_id=b.id) }}">TRACK DRIVER</a>
+          {% endif %}
+          {% if b.status == 'pending' %}
+          <form method="post" action="{{ url_for('approve_booking', booking_id=b.id) }}" class="inline">
+            <button type="submit" class="btn small ok">APPROVE</button>
+          </form>
+          <form method="post" action="{{ url_for('decline_booking', booking_id=b.id) }}" class="inline"
+                onsubmit="return promptDecline(this);">
+            <input type="hidden" name="coordinator_remarks">
+            <button type="submit" class="btn small danger">REJECT</button>
+          </form>
+          {% elif b.status == 'approved' %}
+          <button type="button" class="btn small primary"
+            onclick='openAssign({{ b.id|tojson }}, {{ b.booking_code|tojson }}, {{ b.vehicle_type_needed|tojson }}, {{ b.passenger_count }}, {{ b.pickup_location|tojson }}, {{ b.dropoff_location|tojson }}, {{ b.departure_date|tojson }}, {{ b.departure_time|tojson }}, {{ b.purpose|tojson }})'>
+            ASSIGN
+          </button>
+          <form method="post" action="{{ url_for('decline_booking', booking_id=b.id) }}" class="inline"
+                onsubmit="return promptDecline(this);">
+            <input type="hidden" name="coordinator_remarks">
+            <button type="submit" class="btn small danger">REJECT</button>
+          </form>
+          {% elif b.status == 'assigned' %}
+          <button type="button" class="btn small primary"
+            onclick='openAssign({{ b.id|tojson }}, {{ b.booking_code|tojson }}, {{ b.vehicle_type_needed|tojson }}, {{ b.passenger_count }}, {{ b.pickup_location|tojson }}, {{ b.dropoff_location|tojson }}, {{ b.departure_date|tojson }}, {{ b.departure_time|tojson }}, {{ b.purpose|tojson }})'>
+            REASSIGN
+          </button>
+          {% endif %}
+
+          {% if b.status == 'assigned' and b.driver_phone %}
+          <a class="btn small ok" target="_blank"
+             href="{{ whatsapp_link(b.driver_phone, summary_text(b)) }}">
+            WHATSAPP DRIVER
+          </a>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="12" class="hint">No bookings found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Assign modal -->
+<div id="assignModal" class="modal" style="display:none;">
+  <div class="modal-box">
+    <h2>Assign Vehicle &amp; Driver</h2>
+    <p id="assignInfo" class="hint"></p>
+    <form method="post" id="assignForm">
+      <div id="assignRows"></div>
+      <button type="button" class="btn small" onclick="addAssignRow()">+ ADD ANOTHER VEHICLE / DRIVER</button>
+      <p class="hint">You can assign multiple vehicles and drivers for a large group. Each driver accepts and completes their own trip.</p>
+
+      <label>Coordinator Remarks</label>
+      <input name="coordinator_remarks" id="assignRemarks">
+
+      <div class="rowbtns" style="margin-top:14px;">
+        <button type="submit" class="btn primary">CONFIRM ASSIGN</button>
+        <button type="button" class="btn ghost" onclick="closeAssign()">CANCEL</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const VEHICLES = [
+  {% for v in vehicles %}
+  {
+    id: {{ v.id }},
+    plate: {{ v.plate_number|tojson }},
+    name: {{ v.vehicle_name|tojson }},
+    type: {{ v.vehicle_type|tojson }},
+    capacity: {{ v.capacity }},
+    driverId: {{ (v.driver_id or 0)|tojson }},
+    driverName: {{ (v.driver_name or '')|tojson }},
+    mileage: {{ (v.mileage or 0)|tojson }},
+    status: {{ v.status|tojson }}
+  }{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+
+const DRIVERS = [
+  {% for d in drivers %}
+  { id: {{ d.id }}, name: {{ d.full_name|tojson }} }{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+
+const ASSIGNMENTS = {{ assignments_by_booking|tojson }};
+
+let assignCtx = { pax: 1 };
+
+function vehicleOptions(pax, selected) {
+  const matching = VEHICLES
+    .filter(v => v.status !== 'maintenance' && v.status !== 'inactive')
+    .sort((a, b) => {
+      if (a.capacity < pax && b.capacity >= pax) return 1;
+      if (a.capacity >= pax && b.capacity < pax) return -1;
+      return a.capacity - b.capacity;
+    });
+  let html = '<option value="">— select vehicle —</option>';
+  matching.forEach(v => {
+    const sel = (String(v.id) === String(selected)) ? ' selected' : '';
+    const under = v.capacity < pax ? ' ⚠ UNDER CAPACITY' : '';
+    html += '<option value="' + v.id + '"' + sel + '>' +
+      v.plate + ' — ' + v.name + ' (' + v.type + ', ' + v.capacity + ' pax)' +
+      ' | Odo: ' + Number(v.mileage).toLocaleString() + ' km' +
+      under + ' [' + v.status.toUpperCase() + ']</option>';
+  });
+  return { html: html, count: matching.length };
+}
+
+function driverOptions(selected) {
+  let html = '<option value="">— select driver —</option>';
+  DRIVERS.forEach(d => {
+    const sel = (String(d.id) === String(selected)) ? ' selected' : '';
+    html += '<option value="' + d.id + '"' + sel + '>' + d.name + '</option>';
+  });
+  return html;
+}
+
+function addAssignRow(preselectVehicle, preselectDriver) {
+  const wrap = document.getElementById('assignRows');
+  const row = document.createElement('div');
+  row.className = 'assign-row';
+  const opts = vehicleOptions(assignCtx.pax, preselectVehicle);
+  row.innerHTML =
+    '<label>Vehicle <span class="req">*</span></label>' +
+    '<select name="vehicle_id" class="assign-vehicle" required>' + opts.html + '</select>' +
+    '<label>Driver <span class="req">*</span></label>' +
+    '<select name="driver_id" class="assign-driver" required>' + driverOptions(preselectDriver) + '</select>' +
+    '<button type="button" class="btn danger small" onclick="removeAssignRow(this)">REMOVE</button>';
+  wrap.appendChild(row);
+  if (!opts.count) {
+    const warn = document.createElement('div');
+    warn.className = 'flash error';
+    warn.textContent = 'No vehicles available!';
+    row.appendChild(warn);
+  }
+  syncDriverChips();
+}
+
+function removeAssignRow(btn) {
+  const rows = document.querySelectorAll('#assignRows .assign-row');
+  if (rows.length <= 1) return;
+  btn.closest('.assign-row').remove();
+}
+
+function openAssign(id, code, vtype, pax, pickup, dropoff, date, time, purpose) {
+  assignCtx = { pax: pax };
+  document.getElementById('assignForm').action =
+    '/bookings/' + id + '/assign';
+  document.getElementById('assignInfo').textContent =
+    code + ' — ' + pax + ' pax | ' +
+    (vtype ? 'needs: ' + vtype + ' | ' : '') +
+    pickup + ' → ' + dropoff + ' | ' + date + ' ' + time + ' | ' + purpose;
+
+  document.getElementById('assignRows').innerHTML = '';
+  const existing = ASSIGNMENTS[id] || [];
+  if (existing.length) {
+    existing.forEach(a => addAssignRow(a.vehicle_id, a.driver_id));
+  } else {
+    addAssignRow();
+  }
+  document.getElementById('assignModal').style.display = 'flex';
+}
+
+function syncDriverChips() {
+  document.querySelectorAll('.driver-chip').forEach(chip => {
+    chip.classList.remove('active');
+  });
+}
+
+function closeAssign() {
+  document.getElementById('assignModal').style.display = 'none';
+}
+</script>
+<script>
+function promptDecline(form) {
+  const reason = prompt('Reason for rejecting this booking:');
+  if (reason === null || !reason.trim()) {
+    if (reason !== null) alert('Please provide a reason for rejecting this booking.');
+    return false;
+  }
+  form.querySelector('[name="coordinator_remarks"]').value = reason.trim();
+  return true;
+}
+</script>
+{% endblock %}

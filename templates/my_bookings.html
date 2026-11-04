@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}MY BOOKINGS - TRANSPORT{% endblock %}
+{% set active = 'my_bookings' %}
+{% block content %}
+<div class="pagehead">
+  <h1>My Bookings</h1>
+  <a href="{{ url_for('booking_form') }}" class="btn primary">+ NEW BOOKING</a>
+</div>
+
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>Code</th><th>Purpose</th><th>Type</th><th>Passengers</th>
+        <th>Departure</th><th>Assigned Vehicle</th><th>Status</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in bookings %}
+      <tr data-booking-id="{{ b.id }}">
+        <td><strong>{{ b.booking_code }}</strong></td>
+        <td>
+          {{ b.purpose }}
+          <span class="hint">
+            {{ (b.nature_of_trip or 'official')|capitalize }} trip
+            {% if b.department %} · {{ b.department }}{% endif %}
+          </span>
+        </td>
+        <td><span class="pill">{{ b.vehicle_type_needed or '—' }}</span></td>
+        <td>{{ b.passenger_count }}</td>
+        <td class="small">{{ b.departure_date }} {{ b.departure_time }}</td>
+        <td class="small">
+          {% if b.plate_number %}
+            {{ b.vehicle_name }} ({{ b.plate_number }})
+            {% if b.driver_name %}<br><span class="hint">Driver: {{ b.driver_name }}</span>{% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          <span class="badge {{ b.status }}" data-status-for="{{ b.id }}"
+                data-status-label="{{ 'DRIVER ON THE WAY' if b.status == 'on_the_way' else b.status|replace('_',' ')|upper }}">
+            {{ 'DRIVER ON THE WAY' if b.status == 'on_the_way' else b.status|replace('_',' ')|upper }}
+          </span>
+          {% if b.driver_on_the_way_at %}
+          <div class="hint" data-on-the-way-for="{{ b.id }}">Driver on the way · {{ b.driver_on_the_way_at }}</div>
+          {% endif %}
+          <div data-arrival-cell-for="{{ b.id }}">
+            {% if b.driver_arrived_at %}
+            <div class="flash info" data-arrival-for="{{ b.id }}">Driver arrived · {{ b.driver_arrived_at }}</div>
+            {% endif %}
+          </div>
+          <div data-pickup-cell-for="{{ b.id }}">
+            {% if b.picked_up_at %}
+            <div class="flash ok" data-pickup-status-for="{{ b.id }}">Client picked up · {{ b.picked_up_at }}</div>
+            {% endif %}
+          </div>
+        </td>
+        <td class="rowbtns">
+          <a href="{{ url_for('booking_detail', booking_id=b.id) }}" class="btn small">VIEW</a>
+          {% if b.status == 'on_the_way' and not b.driver_arrived_at %}
+          <a href="{{ url_for('booking_detail', booking_id=b.id) }}" class="btn small primary">TRACK DRIVER</a>
+          {% endif %}
+          {% if b.status in ('pending','approved','assigned') %}
+          <form method="post" action="{{ url_for('cancel_booking', booking_id=b.id) }}"
+                class="inline" onsubmit="return confirm('Cancel booking {{ b.booking_code }}?');">
+            <button type="submit" class="btn small danger">CANCEL</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="hint">You have no bookings yet. Click + NEW BOOKING to start.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

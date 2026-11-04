@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}USERS - TRANSPORT{% endblock %}
+{% set active = 'users' %}
+{% block content %}
+<div class="pagehead">
+  <h1>User Management</h1>
+  <a class="btn small" href="{{ url_for('users', show_inactive='0' if show_inactive else '1') }}">
+    {{ 'HIDE DEACTIVATED USERS' if show_inactive else 'SHOW DEACTIVATED USERS' }}
+  </a>
+</div>
+
+{% if welcome %}
+<div class="welcome-box">
+  <div class="welcome-title">
+    &#9989; Na-create si <strong>{{ welcome.full_name }}</strong>
+    (username: <strong>{{ welcome.username }}</strong>)
+    {% if welcome.vehicle %}
+      + vehicle registered: <strong>{{ welcome.vehicle.vehicle_name }}
+      ({{ welcome.vehicle.plate_number }})</strong>
+      — {{ welcome.vehicle.vehicle_type }}, {{ welcome.vehicle.capacity }} pax
+    {% endif %}
+  </div>
+  {% if welcome.wa_url %}
+  <a class="btn ok" target="_blank" href="{{ welcome.wa_url }}">
+    &#128242; SEND WELCOME VIA WHATSAPP
+  </a>
+  <div class="hint" style="margin-top:6px;">
+    Opens WhatsApp with a ready message (includes the password - one-time only).
+  </div>
+  {% else %}
+  <div class="hint" style="margin-top:6px;">
+    No WhatsApp number - EDIT the user to send a welcome.
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="split">
+  <div class="panel">
+    <h2>Add User</h2>
+    <form method="post">
+      <input type="hidden" name="action" value="add">
+      <label>Full Name</label>
+      <input name="full_name" required>
+      <label>Username</label>
+      <input name="username" required>
+      <label>Password</label>
+      <input type="password" name="password" required>
+      <label>Role</label>
+      <select name="role" id="addRole" onchange="toggleVehicleSection()">
+        <option value="requester">Requester / Staff</option>
+        <option value="driver">Driver</option>
+        <option value="guard">Guard (taga-approve)</option>
+        <option value="coordinator">Coordinator</option>
+        <option value="admin">Admin</option>
+      </select>
+      <label>WhatsApp Number (optional)</label>
+      <input name="phone_whatsapp" placeholder="09XXXXXXXXX">
+
+      <div id="vehicleSection" style="display:none;border-top:1px dashed var(--border);margin-top:14px;padding-top:12px;">
+        <h2 style="margin-top:0;">Driver Vehicle (optional)</h2>
+        <div class="hint" style="margin-bottom:8px;">
+          Leave blank if there is no vehicle yet - it can be added later on the Vehicles page.
+        </div>
+        <label>Plate Number</label>
+        <input name="v_plate_number" placeholder="ABC-1234">
+        <label>Vehicle Name / Model</label>
+        <input name="v_vehicle_name" placeholder="Toyota Hiace Grandia">
+        <label>Vehicle Type</label>
+        <select name="v_vehicle_type">
+          {% for t in vtypes %}
+          <option value="{{ t }}">{{ t }}</option>
+          {% endfor %}
+        </select>
+        <label>Capacity (passengers)</label>
+        <input type="number" name="v_capacity" value="1" min="1">
+        <label>Mileage (km, optional)</label>
+        <input type="number" name="v_mileage" value="0" min="0">
+        <label>Remarks</label>
+        <input name="v_remarks">
+      </div>
+
+      <button type="submit" class="btn primary" style="margin-top:12px;">ADD USER</button>
+    </form>
+  </div>
+
+  <div class="panel" style="flex:2;">
+    <h2>{{ 'All Users (including deactivated)' if show_inactive else 'Active Users' }}</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th><th>Username</th><th>Role</th><th>Vehicle</th>
+          <th>WhatsApp</th><th>Status</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr class="{{ 'row-off' if not u.active }}">
+          <td>{{ u.full_name }}</td>
+          <td>{{ u.username }}</td>
+          <td><span class="pill">{{ u.role|upper }}</span></td>
+          <td class="small">
+            {% if u.v_plate %}
+              {{ u.v_name }} ({{ u.v_plate }})<br>
+              <span class="hint">{{ u.v_type }}, {{ u.v_capacity }} pax
+                {% if u.v_mileage is not none %} • {{ '{:,}'.format(u.v_mileage or 0) }} km{% endif %}
+              </span>
+            {% elif u.role == 'driver' %}
+              <span class="hint">none yet</span>
+            {% else %}—{% endif %}
+          </td>
+          <td>{{ u.phone_whatsapp or '—' }}</td>
+          <td>
+            <span class="badge {{ 'completed' if u.active else 'declined' }}">
+              {{ 'ACTIVE' if u.active else 'INACTIVE' }}
+            </span>
+          </td>
+          <td class="rowbtns">
+            {% set wa = user_wa_url(u) %}
+            {% if wa %}
+            <a class="btn small ok" target="_blank" href="{{ wa }}">WHATSAPP</a>
+            {% endif %}
+            <details class="inline-details">
+              <summary class="btn small">EDIT</summary>
+              <div class="dropdown-form">
+                <form method="post">
+                  <input type="hidden" name="action" value="update">
+                  <input type="hidden" name="id" value="{{ u.id }}">
+                  <label>Full Name</label>
+                  <input name="full_name" value="{{ u.full_name }}" required>
+                  <label>Role</label>
+                  <select name="role">
+                    {% for r in ['requester','driver','guard','coordinator','admin'] %}
+                    <option value="{{ r }}" {{ 'selected' if u.role==r }}>{{ r|upper }}</option>
+                    {% endfor %}
+                  </select>
+                  <label>WhatsApp</label>
+                  <input name="phone_whatsapp" value="{{ u.phone_whatsapp }}">
+                  <label>New Password (leave blank to keep)</label>
+                  <input type="password" name="new_password">
+                  <button type="submit" class="btn ok">SAVE</button>
+                </form>
+              </div>
+            </details>
+            <form method="post" class="inline">
+              <input type="hidden" name="action" value="toggle">
+              <input type="hidden" name="id" value="{{ u.id }}">
+              <button type="submit" class="btn small {{ 'danger' if u.active }}">
+                {{ 'DEACTIVATE' if u.active else 'ACTIVATE' }}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function toggleVehicleSection() {
+  const role = document.getElementById('addRole').value;
+  document.getElementById('vehicleSection').style.display =
+    role === 'driver' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

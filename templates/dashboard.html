@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block head %}<meta http-equiv="refresh" content="15">{% endblock %}
+{% block title %}DASHBOARD - TRANSPORT{% endblock %}
+{% set active = 'dashboard' %}
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="stats">
+  <div class="statcard">
+    <div class="statnum">{{ stats.pending }}</div>
+    <div class="statlabel">Pending Requests</div>
+  </div>
+  <div class="statcard">
+    <div class="statnum">{{ stats.approved }}</div>
+    <div class="statlabel">Approved</div>
+  </div>
+  <div class="statcard blue">
+    <div class="statnum">{{ stats.assigned }}</div>
+    <div class="statlabel">Assigned</div>
+  </div>
+  <div class="statcard green">
+    <div class="statnum">{{ stats.in_progress }}</div>
+    <div class="statlabel">In Progress</div>
+  </div>
+  <div class="statcard teal">
+    <div class="statnum">{{ stats.completed }}</div>
+    <div class="statlabel">Completed</div>
+  </div>
+  <div class="statcard orange">
+    <div class="statnum">{{ stats.on_the_way }}</div>
+    <div class="statlabel">Driver On The Way</div>
+  </div>
+  <div class="statcard orange">
+    <div class="statnum">{{ stats.today_trips }}</div>
+    <div class="statlabel">Today's Trips</div>
+  </div>
+  <div class="statcard">
+    <div class="statnum">{{ stats.vehicles_available }}/{{ stats.vehicles_total }}</div>
+    <div class="statlabel">Vehicles Available</div>
+  </div>
+  <div class="statcard">
+    <div class="statnum">{{ stats.users_total }}</div>
+    <div class="statlabel">Active Users</div>
+  </div>
+</div>
+
+<h2>Recent Bookings</h2>
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>Code</th><th>Requester</th><th>Purpose</th>
+        <th>Vehicle Type</th><th>Departure</th><th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in recent %}
+      <tr data-booking-id="{{ b.id }}">
+        <td><a href="{{ url_for('booking_detail', booking_id=b.id) }}">{{ b.booking_code }}</a></td>
+        <td>{{ b.requester_name }}</td>
+        <td>
+          {{ b.purpose }}
+          <span class="pill">{{ (b.nature_of_trip or 'official')|capitalize }}</span>
+        </td>
+        <td><span class="pill">{{ b.vehicle_type_needed or '—' }}</span></td>
+        <td>{{ b.departure_date }} {{ b.departure_time }}</td>
+        <td><span class="badge {{ b.status }}">{{ b.status|replace('_',' ')|upper }}</span></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="hint">No bookings yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

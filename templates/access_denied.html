@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}ACCESS DENIED - TRANSPORT{% endblock %}
+{% block content %}
+<div class="denied-card">
+  <div class="denied-icon">&#9888;</div>
+  <h1>ACCESS DENIED</h1>
+
+  <p class="denied-msg">
+    You are currently logged in as <strong>{{ user.full_name }}</strong>
+    (username: <strong>{{ user.username }}</strong>) with role
+    <span class="pill">{{ user.role|upper }}</span>.
+  </p>
+  <p class="denied-msg">
+    This page (<strong>{{ page_name }}</strong>) is only for:
+    {% for r in allowed_roles %}
+      <span class="pill">{{ r|upper }}</span>{{ "," if not loop.last }}
+    {% endfor %}
+  </p>
+
+  <div class="flash error" style="text-align:center;">
+    Wrong account? Log out and sign in with the correct user.
+  </div>
+
+  <div class="denied-actions">
+    <form method="post" action="{{ url_for('logout') }}" class="inline">
+      <button type="submit" class="btn danger">LOG OUT AT MAG-LOGIN ULIT</button>
+    </form>
+    <a href="{{ home_url }}" class="btn primary">BACK TO MY HOME</a>
+    <a href="{{ url_for('login') }}" class="btn">GO TO LOGIN</a>
+  </div>
+</div>
+{% endblock %}

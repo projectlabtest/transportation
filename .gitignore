@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# Database (live data, not source)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Android build output
+driver-app/.gradle/
+driver-app/**/build/
+driver-app/local.properties
+driver-app/.idea/
+*.apk
+*.aab
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+Thumbs.db
+.DS_Store

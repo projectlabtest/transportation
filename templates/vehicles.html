@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}VEHICLES - TRANSPORT{% endblock %}
+{% set active = 'vehicles' %}
+{% block content %}
+<div class="pagehead">
+  <h1>Vehicle Fleet (Encoded)</h1>
+  <span class="hint">Vehicle types filter what coordinators can assign to each booking.</span>
+</div>
+
+<div class="panel">
+  <h2>Encode New Vehicle</h2>
+  <form method="post" class="formgrid">
+    <input type="hidden" name="action" value="add">
+    <div>
+      <label>Plate Number</label>
+      <input name="plate_number" required placeholder="ABC-1234">
+    </div>
+    <div>
+      <label>Vehicle Name / Model</label>
+      <input name="vehicle_name" required placeholder="Toyota Hiace Grandia">
+    </div>
+    <div>
+      <label>Vehicle Type</label>
+      <select name="vehicle_type" required>
+        {% for t in vtypes %}
+        <option value="{{ t }}">{{ t }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Capacity (passengers)</label>
+      <input type="number" name="capacity" value="1" min="1" required>
+    </div>
+    <div>
+      <label>Current Mileage (km / odometer)</label>
+      <input type="number" name="mileage" value="0" min="0">
+    </div>
+    <div>
+      <label>Assigned Driver (optional)</label>
+      <select name="driver_id">
+        <option value="">— none —</option>
+        {% for d in drivers %}
+        <option value="{{ d.id }}">{{ d.full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Status</label>
+      <select name="status">
+        {% for s in vstatuses %}
+        <option value="{{ s }}">{{ s|upper }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="grid-column:1/-1;">
+      <label>Remarks</label>
+      <input name="remarks">
+    </div>
+    <div>
+      <button type="submit" class="btn primary">ENCODE VEHICLE</button>
+    </div>
+  </form>
+</div>
+
+<h2>Fleet List</h2>
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>Plate</th><th>Vehicle</th><th>Type</th><th>Capacity</th><th>Mileage</th>
+        <th>Driver</th><th>Status</th><th>Remarks</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in vehicles %}
+      <tr>
+        <td><strong>{{ v.plate_number }}</strong></td>
+        <td>{{ v.vehicle_name }}</td>
+        <td><span class="pill">{{ v.vehicle_type }}</span></td>
+        <td>{{ v.capacity }} pax</td>
+        <td><strong>{{ '{:,}'.format(v.mileage or 0) }}</strong> km</td>
+        <td>{{ v.driver_name or '—' }}</td>
+        <td><span class="badge {{ v.status }}">{{ v.status|upper }}</span></td>
+        <td>{{ v.remarks or '' }}</td>
+        <td class="rowbtns">
+          <details class="inline-details">
+            <summary class="btn small">EDIT</summary>
+            <div class="dropdown-form">
+              <form method="post">
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="id" value="{{ v.id }}">
+                <label>Plate</label>
+                <input name="plate_number" value="{{ v.plate_number }}" required>
+                <label>Name</label>
+                <input name="vehicle_name" value="{{ v.vehicle_name }}" required>
+                <label>Type</label>
+                <select name="vehicle_type">
+                  {% for t in vtypes %}
+                  <option value="{{ t }}" {{ 'selected' if v.vehicle_type==t }}>{{ t }}</option>
+                  {% endfor %}
+                </select>
+                <label>Capacity</label>
+                <input type="number" name="capacity" value="{{ v.capacity }}" min="1">
+                <label>Current Mileage (km)</label>
+                <input type="number" name="mileage" value="{{ v.mileage or 0 }}" min="0">
+                <label>Driver</label>
+                <select name="driver_id">
+                  <option value="">— none —</option>
+                  {% for d in drivers %}
+                  <option value="{{ d.id }}" {{ 'selected' if v.driver_id==d.id }}>{{ d.full_name }}</option>
+                  {% endfor %}
+                </select>
+                <label>Status</label>
+                <select name="status">
+                  {% for s in vstatuses %}
+                  <option value="{{ s }}" {{ 'selected' if v.status==s }}>{{ s|upper }}</option>
+                  {% endfor %}
+                </select>
+                <label>Remarks</label>
+                <input name="remarks" value="{{ v.remarks }}">
+                <button type="submit" class="btn ok">SAVE</button>
+              </form>
+            </div>
+          </details>
+          <form method="post" class="inline" onsubmit="return confirm('Delete this vehicle?');">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" value="{{ v.id }}">
+            <button type="submit" class="btn small danger">DELETE</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" class="hint">No vehicles encoded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,71 @@
+LHC Transport - separate server desktop installation
+
+This package installs LHC Transport in a new, separate folder. It does not
+modify the existing inventory applications or copy this developer PC's
+transport database.
+
+Installer requirements:
+- Windows PowerShell
+- Python 3.10 or later
+- Internet access to install the two packages in requirements.txt
+- Tailscale installed and signed in on the server and Android phone
+
+Run INSTALL-NEW-SERVER.ps1 from the extracted package. It defaults to a new
+LHCTransport folder under the current Windows user's profile, stores the new
+SQLite database separately in that user's LocalAppData, and generates a
+production secret locally on the server. It refuses to overwrite a non-empty
+destination or use port 5001 if another process already owns it.
+
+The installer starts one Waitress process in the background on
+127.0.0.1:5001. It checks that /download/android returns the Android APK.
+To start the app again after a reboot, run the .venv Python from the install
+folder with:
+
+  -m waitress --listen=127.0.0.1:5001 wsgi:app
+
+Before sharing the app, open http://127.0.0.1:5001 on the server, sign in with
+the initial account admin / admin123, and change that account's password from
+the Users page. The initial account is only for first setup.
+
+After changing the password, inspect any existing Tailscale Serve routes:
+
+  tailscale serve status
+
+Only if no other service is configured, enable private HTTPS access:
+
+  tailscale serve --bg 5001
+
+The command displays the HTTPS MagicDNS URL. On a phone signed in to the same
+tailnet, download the APK from:
+
+  https://<server-MagicDNS-name>/download/android
+
+Enter the same HTTPS base URL in the Android app. Tailscale Serve access is
+private to tailnet devices; this is not a public Internet website. Do not
+reset or replace an existing Tailscale Serve configuration.
+
+Alternatively, run ENABLE-PRIVATE-TEST-ACCESS.cmd from File Explorer after
+receiving it. Review and accept its confirmation dialog. It checks for
+existing Serve routes and the local APK download, replaces the initial admin
+password with a random password, and enables Serve only when no other route is
+configured. It verifies the HTTPS APK download and opens a private access
+note containing the URL and new admin password. Keep that note private and
+delete it after saving the password.
+
+For a temporary public test without a domain, run START-PUBLIC-TEST-TUNNEL.cmd.
+Review its confirmation dialog carefully: Cloudflare will relay public
+browser/app traffic while the tunnel is running. The script refuses to publish
+a database containing bookings or unexpected user accounts, rotates the
+passwords of the seeded demo accounts, creates a requester test account, and
+verifies the APK download over HTTPS. It downloads cloudflared from its
+official GitHub release URL and verifies the Cloudflare Authenticode
+signature. The temporary link and random test credentials are saved in
+PUBLIC-TEST-ACCESS.txt. Use dummy data only. Stop the tunnel by double-clicking
+STOP-PUBLIC-TEST-TUNNEL.cmd; the temporary URL changes when restarted.
+After a successful APK check, an optional confirmation can send only the
+public URL to the developer PC over encrypted Tailscale file transfer for
+remote verification; passwords and app data are never included in that report.
+
+The app's fresh database contains demo accounts. Replace the initial admin
+password, then review the Users and Vehicles pages before entering real data.
+Back up the separate SQLite database regularly.

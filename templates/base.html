@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1B4F72">
+  {% block head %}{% endblock %}
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+  <link rel="icon" href="{{ url_for('static', filename='icons/transport.svg') }}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/transport-192.png') }}">
+  <title>{% block title %}TRANSPORT BOOKING{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  {% if session.get('user') %}
+  <div class="topbar">
+    <div class="brand">TRANSPORT BOOKING SYSTEM</div>
+    <div class="userbox">
+      {% if session.user.role in ('coordinator', 'admin') %}
+      <a class="fab" href="{{ url_for('booking_form') }}" title="New Booking"
+         aria-label="New Booking">+</a>
+      {% endif %}
+      <span class="who">{{ session.user.full_name }}</span>
+      <span class="role">{{ session.user.role|upper }}</span>
+      <details class="gear-menu">
+        <summary title="Settings" aria-label="Settings">&#9881;</summary>
+        <div class="gear-panel">
+          {% if session.user.role == 'admin' %}
+          <a href="{{ url_for('settings') }}">EMAIL SETTINGS</a>
+          {% endif %}
+          <a href="{{ url_for('change_password') }}">CHANGE PASSWORD</a>
+        </div>
+      </details>
+      <form method="post" action="{{ url_for('logout') }}" class="inline">
+        <button type="submit" class="ghost">LOG OUT</button>
+      </form>
+    </div>
+  </div>
+
+  <nav class="menu">
+    {% set role = session.user.role %}
+    {% if role == 'admin' %}
+      <a href="{{ url_for('dashboard') }}" class="{{ 'active' if active=='dashboard' }}">DASHBOARD</a>
+      <a href="{{ url_for('bookings') }}" class="{{ 'active' if active=='bookings' }}">BOOKINGS</a>
+      <a href="{{ url_for('vehicles') }}" class="{{ 'active' if active=='vehicles' }}">VEHICLES</a>
+      <a href="{{ url_for('users') }}" class="{{ 'active' if active=='users' }}">USERS</a>
+    {% elif role == 'coordinator' %}
+      <a href="{{ url_for('bookings') }}" class="{{ 'active' if active=='bookings' }}">BOOKING QUEUE</a>
+      <a href="{{ url_for('vehicles') }}" class="{{ 'active' if active=='vehicles' }}">FLEET</a>
+    {% elif role == 'guard' %}
+      <a href="{{ url_for('bookings') }}" class="{{ 'active' if active=='bookings' }}">APPROVAL QUEUE</a>
+    {% elif role == 'driver' %}
+      <a href="{{ url_for('my_trips') }}" class="{{ 'active' if active=='my_trips' }}">MY TRIPS</a>
+    {% elif role == 'requester' %}
+      <a href="{{ url_for('my_bookings') }}" class="{{ 'active' if active=='my_bookings' }}">MY BOOKINGS</a>
+    {% endif %}
+  {% endif %}
+
+  <div class="container">
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% if msgs %}
+        <div class="flashes">
+          {% for cat, msg in msgs %}
+            <div class="flash {{ cat }}">{{ msg }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+  <div id="toastBox" class="toast-box"></div>
+  <script>
+  (function () {
+    var snap = {};
+    var knownIds = {};
+    var ready = false;
+    function toast(msg, kind) {
+      var box = document.getElementById('toastBox');
+      var el = document.createElement('div');
+      el.className = 'toast ' + (kind || '');
+      el.textContent = msg;
+      box.appendChild(el);
+      setTimeout(function () { el.classList.add('show'); }, 30);
+      setTimeout(function () {
+        el.classList.remove('show');
+        setTimeout(function () { el.remove(); }, 300);
+      }, 6000);
+    }
+    function label(b) {
+      var extra = b.vehicle_name
+        ? ' • ' + b.vehicle_name + (b.plate_number ? ' (' + b.plate_number + ')' : '')
+        : '';
+      return b.booking_code + extra + ' → ' + b.status_label;
+    }
+    function poll() {
+      fetch('/api/updates', {
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store'
+      })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data || !data.bookings) return;
+          var serverIds = {};
+          var newBooking = false;
+          var removedBooking = false;
+          var statusChanged = false;
+          data.bookings.forEach(function (b) {
+            serverIds[b.id] = true;
+            var prev = snap[b.id];
+            if (ready && prev === undefined) newBooking = true;
+            if (ready && prev !== undefined && prev !== b.status) {
+              statusChanged = true;
+              toast(label(b), 'ok');
+              var row = document.querySelector('[data-booking-id="' + b.id + '"]');
+              if (row) {
+                row.classList.remove('row-updated');
+                void row.offsetWidth;
+                row.classList.add('row-updated');
+              }
+              var statusBadge = document.querySelector(
+                '[data-status-for="' + b.id + '"]');
+              if (statusBadge) {
+                statusBadge.textContent = b.status_label;
+                statusBadge.dataset.statusLabel = b.status_label;
+                statusBadge.className = 'badge ' + b.status;
+              }
+              if (b.status === 'on_the_way' && b.driver_on_the_way_at) {
+                var notice = document.querySelector(
+                  '[data-on-the-way-for="' + b.id + '"]');
+                if (!notice) {
+                  notice = document.createElement('div');
+                  notice.className = 'flash info';
+                  notice.dataset.onTheWayFor = b.id;
+                  if (statusBadge && statusBadge.closest('td')) {
+                    statusBadge.after(notice);
+                  } else if (statusBadge && statusBadge.closest('.pagehead')) {
+                    statusBadge.closest('.pagehead').after(notice);
+                  } else if (row) {
+                    row.after(notice);
+                  } else {
+                    document.querySelector('.container').prepend(notice);
+                  }
+                }
+                notice.textContent =
+                  'DRIVER ON THE WAY · ' + b.driver_on_the_way_at;
+              }
+            }
+            var previousPickup = snap[b.id + ':pickup'];
+            if (ready && previousPickup !== undefined &&
+                !previousPickup && b.picked_up_at) {
+              toast(b.booking_code + ' — client picked up at ' + b.picked_up_at, 'ok');
+              var pickupBadge = document.querySelector(
+                '[data-pickup-status-for="' + b.id + '"]');
+              if (pickupBadge) {
+                pickupBadge.textContent = 'PICKED UP · ' + b.picked_up_at;
+                pickupBadge.classList.remove('unassigned');
+                pickupBadge.classList.add('completed');
+              } else {
+                var pickupCell = document.querySelector(
+                  '[data-pickup-cell-for="' + b.id + '"]');
+                if (pickupCell) {
+                  pickupBadge = document.createElement('div');
+                  pickupBadge.className = 'flash ok';
+                  pickupBadge.dataset.pickupStatusFor = b.id;
+                  pickupBadge.textContent =
+                    'Client picked up · ' + b.picked_up_at;
+                  pickupCell.appendChild(pickupBadge);
+                }
+              }
+            }
+            var previousArrival = snap[b.id + ':arrival'];
+            if (ready && previousArrival !== undefined &&
+                !previousArrival && b.driver_arrived_at) {
+              toast(b.booking_code + ' — driver arrived at pickup at ' +
+                b.driver_arrived_at, 'ok');
+              var arrivalNotice = document.querySelector(
+                '[data-arrival-for="' + b.id + '"]');
+              if (arrivalNotice) {
+                arrivalNotice.textContent =
+                  'DRIVER ARRIVED AT PICKUP · ' + b.driver_arrived_at;
+              } else {
+                var arrivalCell = document.querySelector(
+                  '[data-arrival-cell-for="' + b.id + '"]');
+                if (arrivalCell) {
+                  arrivalNotice = document.createElement('div');
+                  arrivalNotice.className = 'flash info';
+                  arrivalNotice.dataset.arrivalFor = b.id;
+                  arrivalNotice.textContent =
+                    'Driver arrived · ' + b.driver_arrived_at;
+                  arrivalCell.appendChild(arrivalNotice);
+                }
+              }
+              var arrivalBadge = document.querySelector(
+                '[data-arrival-status-for="' + b.id + '"]');
+              if (arrivalBadge) {
+                arrivalBadge.textContent =
+                  'ARRIVED · ' + b.driver_arrived_at;
+                arrivalBadge.className = 'badge completed';
+              }
+            }
+            snap[b.id + ':arrival'] = b.driver_arrived_at || '';
+            if (ready && prev === 'on_the_way' && b.status !== 'on_the_way') {
+              var notice = document.querySelector(
+                '[data-on-the-way-for="' + b.id + '"]');
+              if (notice) notice.remove();
+            }
+            snap[b.id + ':pickup'] = b.picked_up_at || '';
+            snap[b.id] = b.status;
+          });
+          if (ready) {
+            Object.keys(knownIds).forEach(function (id) {
+              if (!serverIds[id]) removedBooking = true;
+            });
+          }
+          knownIds = serverIds;
+          var modal = document.getElementById('assignModal');
+          var modalOpen = modal && modal.style.display === 'flex';
+          var listPage = (window.location.pathname === '/bookings' ||
+                          window.location.pathname === '/dashboard' ||
+                          window.location.pathname === '/my-trips' ||
+                          window.location.pathname === '/my-bookings');
+          if (ready && listPage && !modalOpen &&
+              (newBooking || removedBooking || statusChanged)) {
+            toast((newBooking ? 'New booking received'
+                              : 'Update detected') +
+                  ' — refreshing this page.', 'ok');
+            setTimeout(function () { window.location.reload(); }, 1000);
+          }
+          ready = true;
+        })
+        .catch(function () {});
+    }
+    poll();
+    setInterval(poll, 4000);
+  })();
+  </script>
+  <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('{{ url_for("service_worker") }}')
+      .catch(function (error) { console.error('Service worker registration failed:', error); });
+  }
+  </script>
+</body>
+</html>

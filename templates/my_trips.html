@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+{% block title %}MY TRIPS - TRANSPORT{% endblock %}
+{% set active = 'my_trips' %}
+{% block content %}
+<h1>My Assigned Trips</h1>
+<p class="hint">Accept, start, and complete trips assigned to you by the coordinator. The <strong>start/end odometer</strong> and <strong>Time OUT/IN</strong> are recorded by the guard at the gate.</p>
+
+<div class="split2">
+  {% for b in bookings %}
+  <div class="panel tripcard" data-booking-id="{{ b.id }}">
+    <div class="pagehead">
+      <strong>{{ b.booking_code }}</strong>
+      <span class="badge {{ b.status }}" data-status-for="{{ b.id }}"
+            data-status-label="{{ 'DRIVER ON THE WAY' if b.status == 'on_the_way' else b.status|replace('_',' ')|upper }}">
+        {{ 'DRIVER ON THE WAY' if b.status == 'on_the_way' else b.status|replace('_',' ')|upper }}
+      </span>
+    </div>
+    {% if b.driver_on_the_way_at %}
+    <p class="flash info" data-on-the-way-for="{{ b.id }}">
+      DRIVER ON THE WAY · {{ b.driver_on_the_way_at }}
+    </p>
+    {% endif %}
+    {% if b.driver_arrived_at %}
+    <p class="flash ok" data-arrival-for="{{ b.id }}">
+      ARRIVED AT PICKUP · {{ b.driver_arrived_at }}
+    </p>
+    {% endif %}
+    {% if b.status == 'on_the_way' and not b.driver_arrived_at %}
+    <div class="location-sharing-box" data-driver-location="{{ b.id }}"
+         data-sharing="{{ 'true' if b.location_sharing else 'false' }}">
+      <p class="hint">Optional: share your live GPS location with this booking's client and coordinator while traveling to pickup. Sharing stops when you arrive or leave this page.</p>
+      <button type="button" class="btn primary" data-location-toggle="{{ b.id }}">
+        START LIVE LOCATION SHARING
+      </button>
+      <span class="hint" data-location-message="{{ b.id }}"></span>
+    </div>
+    {% endif %}
+
+    <table class="kv">
+      <tr><th>Purpose</th><td>{{ b.purpose }}</td></tr>
+      <tr><th>Nature of Trip</th><td>{{ (b.nature_of_trip or 'official')|capitalize }}</td></tr>
+      <tr><th>{{ 'Charged to' if (b.nature_of_trip or 'official') == 'personal' else 'Department / Account' }}</th><td>{{ b.department or '—' }}</td></tr>
+      <tr><th>Passengers</th><td>{{ b.passenger_count }}</td></tr>
+      <tr><th>Vehicle</th><td>
+        {% if b.plate_number %}
+          {{ b.vehicle_name }} <span class="pill">{{ b.plate_number }}</span>
+        {% else %}—{% endif %}
+      </td></tr>
+      <tr><th>Pickup</th><td>
+        {{ b.pickup_location or '—' }}
+        {% if b.pickup_location and b.pickup_lat is not none %}
+        <br><span class="hint">Pinned: {{ '%.5f'|format(b.pickup_lat) }}, {{ '%.5f'|format(b.pickup_lng) }}</span>
+        {% endif %}
+        {% if b.pickup_location %}
+        <br><a class="btn small" target="_blank" rel="noopener"
+               href="{{ maps_directions_url(maps_point(b.pickup_location, b.pickup_lat, b.pickup_lng)) }}">OPEN PICKUP IN MAPS</a>
+        {% endif %}
+      </td></tr>
+      <tr><th>Drop-off</th><td>
+        {{ b.dropoff_location or '—' }}
+        {% if b.dropoff_location %}
+        <br><a class="btn small" target="_blank" rel="noopener"
+               href="{{ maps_directions_url(b.dropoff_location) }}">OPEN DROP-OFF IN MAPS</a>
+        {% endif %}
+      </td></tr>
+      {% if b.pickup_location and b.dropoff_location %}
+      <tr><th>Route</th><td>
+        <a class="btn small primary" target="_blank" rel="noopener"
+           href="{{ maps_directions_url(b.dropoff_location, maps_point(b.pickup_location, b.pickup_lat, b.pickup_lng)) }}">OPEN ROUTE IN MAPS</a>
+      </td></tr>
+      {% endif %}
+      <tr><th>Departure</th><td>{{ b.departure_date }} {{ b.departure_time }}</td></tr>
+      {% if b.flight_type and b.flight_type != 'none' %}
+      <tr><th>Flight</th><td>{{ b.flight_type|capitalize }} {{ b.flight_number }} - departs {{ b.flight_date }} {{ b.flight_time }}</td></tr>
+      {% endif %}
+      <tr><th>Client Pickup</th><td>
+        {% if b.picked_up_at %}
+          <span class="badge completed">PICKED UP · {{ b.picked_up_at }}</span>
+        {% else %}
+          <span class="badge unassigned">NOT PICKED UP</span>
+        {% endif %}
+      </td></tr>
+      <tr><th>Client Drop-off</th><td>
+        {% if b.dropped_off_at %}
+        <span class="badge completed">DROPPED OFF · {{ b.dropped_off_at }}</span>
+        {% else %}
+        <span class="badge unassigned">NOT DROPPED OFF</span>
+        {% endif %}
+      </td></tr>
+      <tr><th>Driver Arrival</th><td>
+        {% if b.driver_arrived_at %}
+          <span class="badge completed">ARRIVED · {{ b.driver_arrived_at }}</span>
+        {% else %}
+          <span class="badge unassigned">NOT ARRIVED</span>
+        {% endif %}
+      </td></tr>
+      {% if b.is_roundtrip %}
+      <tr><th>Return</th><td>{{ b.return_date }} {{ b.return_time }}</td></tr>
+      {% endif %}
+      <tr><th>Requester</th><td>{{ b.requester_name }}
+        {% if b.requester_phone %}
+        <br><span class="hint">{{ b.requester_phone }}</span>
+        {% endif %}
+      </td></tr>
+      {% if b.remarks %}
+      <tr><th>Remarks</th><td>{{ b.remarks }}</td></tr>
+      {% endif %}
+      {% if b.time_out_at %}
+      <tr><th>Time OUT</th><td>{{ b.time_out_at }}</td></tr>
+      {% endif %}
+      {% if b.start_mileage is not none %}
+      <tr><th>Start Odometer</th><td>{{ '{:,}'.format(b.start_mileage) }} km</td></tr>
+      {% endif %}
+      {% if b.end_mileage is not none %}
+      <tr><th>End Odometer</th><td>{{ '{:,}'.format(b.end_mileage) }} km</td></tr>
+      <tr><th>Distance</th><td><strong>{{ '{:,}'.format(b.distance_km or 0) }} km</strong></td></tr>
+      {% endif %}
+      {% if b.time_in_at %}
+      <tr><th>Time IN</th><td>{{ b.time_in_at }}</td></tr>
+      {% endif %}
+    </table>
+
+    <div class="rowbtns" style="margin-top:12px;">
+      {% if b.driver_arrived_at and not b.picked_up_at %}
+      <form method="post" action="{{ url_for('driver_confirm_pickup', booking_id=b.id) }}"
+            class="inline" onsubmit="return confirm('Confirm that you picked up the client?');">
+        <button type="submit" class="btn ok">CONFIRM CLIENT PICKUP</button>
+      </form>
+      {% endif %}
+      {% if b.picked_up_at and not b.dropped_off_at and b.status == 'in_progress' %}
+      <form method="post" action="{{ url_for('driver_confirm_dropoff', booking_id=b.id) }}"
+            class="inline" onsubmit="return confirm('Has the client arrived at the drop-off location?');">
+        <button type="submit" class="btn ok">CONFIRM DROP-OFF</button>
+      </form>
+      {% endif %}
+      {% if b.status == 'assigned' %}
+      <form method="post" action="{{ url_for('driver_trip_status', booking_id=b.id) }}" class="inline">
+        <input type="hidden" name="status" value="accepted">
+        <button type="submit" class="btn ok">ACCEPT TRIP</button>
+      </form>
+      <form method="post" action="{{ url_for('driver_trip_status', booking_id=b.id) }}" class="inline"
+            onsubmit="return promptDecline(event);">
+        <input type="hidden" name="status" value="declined">
+        <input type="hidden" name="reason" id="reason-{{ b.id }}" value="">
+        <button type="submit" class="btn danger">DECLINE</button>
+      </form>
+      {% elif b.status == 'accepted' %}
+      <form method="post" action="{{ url_for('driver_trip_status', booking_id=b.id) }}" class="inline">
+        <input type="hidden" name="status" value="on_the_way">
+        <button type="submit" class="btn primary">MARK DRIVER ON THE WAY</button>
+      </form>
+      {% if pickup_at_gate(b.pickup_location) or b.guard_approved_at %}
+      <form method="post" action="{{ url_for('driver_trip_status', booking_id=b.id) }}" class="inline">
+        <input type="hidden" name="status" value="in_progress">
+        <button type="submit" class="btn warn">START TRIP</button>
+      </form>
+      {% else %}
+      <p class="hint">Pickup is outside SSD/LHC - wait for the guard to approve the trip before starting.</p>
+      {% endif %}
+      {% elif b.status == 'on_the_way' %}
+      {% if not b.pickup_map_opened_at %}
+      <form method="post" action="{{ url_for('driver_pickup_map', booking_id=b.id) }}" class="inline">
+        <button type="submit" class="btn primary">OPEN PICKUP IN GOOGLE MAPS</button>
+      </form>
+      <p class="hint">Open the pickup in Google Maps first - then <strong>MARK ARRIVED AT PICKUP</strong> appears once you are there.</p>
+      {% elif not b.driver_arrived_at %}
+      <form method="post" action="{{ url_for('driver_confirm_arrival', booking_id=b.id) }}"
+            class="inline" onsubmit="return confirm('Confirm that you have arrived at the pickup location?');">
+        <button type="submit" class="btn ok">MARK ARRIVED AT PICKUP</button>
+      </form>
+      {% endif %}
+      {% if pickup_at_gate(b.pickup_location) or b.guard_approved_at %}
+      <form method="post" action="{{ url_for('driver_trip_status', booking_id=b.id) }}" class="inline">
+        <input type="hidden" name="status" value="in_progress">
+        <button type="submit" class="btn warn">START TRIP</button>
+      </form>
+      {% else %}
+      <p class="hint">Pickup is outside SSD/LHC - wait for the guard to approve the trip before starting.</p>
+      {% endif %}
+      {% elif b.status == 'in_progress' %}
+      {% if not b.pickup_map_opened_at %}
+      <form method="post" action="{{ url_for('driver_pickup_map', booking_id=b.id) }}" class="inline">
+        <button type="submit" class="btn primary">OPEN PICKUP IN GOOGLE MAPS</button>
+      </form>
+      <p class="hint">Open the pickup in Google Maps first - then <strong>MARK ARRIVED AT PICKUP</strong> appears once you are there.</p>
+      {% elif not b.driver_arrived_at %}
+      <form method="post" action="{{ url_for('driver_confirm_arrival', booking_id=b.id) }}"
+            class="inline" onsubmit="return confirm('Confirm that you have arrived at the pickup location?');">
+        <button type="submit" class="btn ok">MARK ARRIVED AT PICKUP</button>
+      </form>
+      {% endif %}
+      {% if b.end_mileage is none %}
+      <p class="hint">Wait for the guard to record the <strong>END ODOMETER</strong> before completing the trip.</p>
+      {% else %}
+      <form method="post" action="{{ url_for('driver_trip_status', booking_id=b.id) }}"
+            class="inline" onsubmit="return confirm('Complete this trip?');">
+        <input type="hidden" name="status" value="completed">
+        <button type="submit" class="btn primary">COMPLETE TRIP</button>
+      </form>
+      {% endif %}
+      {% endif %}
+
+      {% if b.requester_phone %}
+      <a class="btn small" target="_blank"
+         href="{{ whatsapp_link(b.requester_phone, 'Hello ' ~ b.requester_name ~ ', regarding trip ' ~ b.booking_code ~ ' (' ~ b.purpose ~ ').') }}">
+        WHATSAPP REQUESTER
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="panel">
+    <p class="hint">No trips assigned to you yet.</p>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+function promptDecline(e) {
+  const form = e.target;
+  const id = form.querySelector('input[name=reason]').id.split('-')[1];
+  const reason = prompt('Reason for declining:');
+  if (reason === null) { e.preventDefault(); return false; }
+  if (!reason.trim()) { alert('Please provide a reason.'); e.preventDefault(); return false; }
+  document.getElementById('reason-' + id).value = reason.trim();
+  return true;
+}
+</script>
+<script>
+(function () {
+  document.querySelectorAll('[data-driver-location]').forEach(function (box) {
+    var bookingId = box.dataset.driverLocation;
+    var button = box.querySelector('[data-location-toggle]');
+    var message = box.querySelector('[data-location-message]');
+    var watchId = null;
+    var lastSentAt = 0;
+    var active = false;
+
+    function showMessage(text) {
+      message.textContent = text;
+    }
+
+    function sendLocation(position) {
+      var now = Date.now();
+      if (now - lastSentAt < 10000) return;
+      lastSentAt = now;
+      fetch('/api/my-trips/' + bookingId + '/location', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        })
+      }).then(function (response) {
+        return response.json().then(function (data) {
+          if (!response.ok) throw new Error(data.error || 'Could not share location.');
+          showMessage('Live location shared · ' + (data.updated_at || 'updating'));
+        });
+      }).catch(function (error) {
+        showMessage(error.message);
+      });
+    }
+
+    function stopSharing(notifyServer) {
+      active = false;
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+      button.textContent = 'START LIVE LOCATION SHARING';
+      box.dataset.sharing = 'false';
+      if (notifyServer) {
+        fetch('/api/my-trips/' + bookingId + '/location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ action: 'stop' })
+        }).catch(function () {});
+      }
+    }
+
+    function startSharing() {
+      if (!window.isSecureContext || !navigator.geolocation) {
+        showMessage('Live GPS needs HTTPS and location permission on this device.');
+        return;
+      }
+      button.disabled = true;
+      fetch('/api/my-trips/' + bookingId + '/location', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ action: 'start' })
+      }).then(function (response) {
+        return response.json().then(function (data) {
+          if (!response.ok) throw new Error(data.error || 'Could not start sharing.');
+          active = true;
+          box.dataset.sharing = 'true';
+          button.textContent = 'STOP LIVE LOCATION SHARING';
+          showMessage('Waiting for GPS location permission…');
+          watchId = navigator.geolocation.watchPosition(sendLocation, function (error) {
+            showMessage(error.code === 1
+              ? 'Location permission was denied. Allow location access in browser settings.'
+              : 'Unable to get GPS location: ' + error.message);
+            stopSharing(true);
+          }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+        });
+      }).catch(function (error) {
+        showMessage(error.message);
+      }).finally(function () {
+        button.disabled = false;
+      });
+    }
+
+    button.addEventListener('click', function () {
+      if (active) stopSharing(true);
+      else startSharing();
+    });
+    window.addEventListener('pagehide', function () {
+      if (!active) return;
+      active = false;
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+      var body = new Blob([JSON.stringify({ action: 'stop' })],
+        { type: 'application/json' });
+      navigator.sendBeacon('/api/my-trips/' + bookingId + '/location', body);
+    });
+  });
+})();
+</script>
+{% endblock %}

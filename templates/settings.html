@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}EMAIL SETTINGS - TRANSPORT{% endblock %}
+{% set active = 'settings' %}
+{% block content %}
+<div class="pagehead">
+  <h1>Email Settings</h1>
+  <span class="badge {{ 'completed' if smtp.configured else 'declined' }}">
+    {{ 'CONFIGURED' if smtp.configured else 'NOT CONFIGURED' }}
+  </span>
+</div>
+
+<div class="split">
+  <div class="panel">
+    <h2>SMTP — Email Sender</h2>
+    <p class="hint">
+      This is the email account the system uses for registration verification codes and test emails.
+    </p>
+    <form method="post">
+      <input type="hidden" name="action" value="save">
+
+      <label>Email provider</label>
+      <select name="smtp_provider" id="smtpProvider" onchange="applyProvider()">
+        <option value="gmail" {{ 'selected' if smtp.provider == 'gmail' }}>Gmail (@gmail.com)</option>
+        <option value="outlook" {{ 'selected' if smtp.provider == 'outlook' }}>Outlook / Office 365</option>
+        <option value="yahoo" {{ 'selected' if smtp.provider == 'yahoo' }}>Yahoo Mail</option>
+        <option value="custom" {{ 'selected' if smtp.provider not in ('gmail', 'outlook', 'yahoo') }}>Company email / Custom domain (hal. @example.com)</option>
+      </select>
+      <p class="hint" id="providerHint"></p>
+
+      <label>Company email domain</label>
+      <input name="smtp_domain" id="smtpDomain" value="{{ smtp.domain }}"
+             placeholder="@example.com">
+      <p class="hint">Example: <strong>@example.com</strong>, <strong>@gmail.com</strong> - the email domain your company uses.</p>
+
+      <label>SMTP Host</label>
+      <input name="smtp_host" id="smtpHost" value="{{ smtp.host }}"
+             placeholder="smtp.gmail.com">
+
+      <label>Port</label>
+      <input name="smtp_port" id="smtpPort" value="{{ smtp.port }}"
+             placeholder="587">
+
+      <label>Username / Email</label>
+      <input name="smtp_user" value="{{ smtp.user }}"
+             placeholder="your@gmail.com">
+
+      <label>Password / App Password</label>
+      <input type="password" name="smtp_password"
+             placeholder="{{ 'Saved - leave blank to keep the current password' if saved_password else 'App password' }}">
+
+      <label>From (sender email)</label>
+      <input name="smtp_from" value="{{ smtp.from }}"
+             placeholder="your@gmail.com">
+
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;">
+        <input type="checkbox" name="smtp_tls" style="width:auto;margin:0;"
+               {{ 'checked' if smtp.tls }}> Use STARTTLS (port 587)
+      </label>
+
+      <div class="rowbtns" style="margin-top:14px;">
+        <button type="submit" class="btn primary">SAVE EMAIL SETTINGS</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h2>Send Test Email</h2>
+    <p class="hint">Verify the settings before using them for registration.</p>
+    <form method="post">
+      <input type="hidden" name="action" value="test">
+      <label>Email address</label>
+      <input type="email" name="test_email" placeholder="name@example.com" required>
+      <button type="submit" class="btn ok" style="margin-top:10px;">
+        SEND TEST EMAIL
+      </button>
+    </form>
+
+    <div class="hint" style="margin-top:16px;">
+      <strong>Gmail:</strong> use an <strong>App Password</strong>
+      (Google Account → Security → 2-Step Verification → App passwords),
+      not your normal password.<br>
+      <strong>Outlook/Office 365:</strong> smtp.office365.com, port 587.<br>
+      <strong>Yahoo:</strong> smtp.mail.yahoo.com, port 587.<br>
+      <strong>Company email (@example.com, etc.):</strong> ask IT for the SMTP
+      host and port of your mail server.
+    </div>
+  </div>
+</div>
+
+<script>
+var PROVIDERS = {
+  gmail: { host: 'smtp.gmail.com', port: '587', domain: '@gmail.com',
+           hint: 'Gmail: use an App Password, not your normal password.' },
+  outlook: { host: 'smtp.office365.com', port: '587', domain: '@yourcompany.com',
+             hint: 'Outlook / Office 365: smtp.office365.com, port 587.' },
+  yahoo: { host: 'smtp.mail.yahoo.com', port: '587', domain: '@yahoo.com',
+           hint: 'Yahoo: use the app password of your Yahoo account.' },
+  custom: { host: '', port: '587', domain: '@example.com',
+            hint: 'Enter the company email SMTP host (e.g. mail.example.com) - ask IT.' }
+};
+
+function applyProvider() {
+  var key = document.getElementById('smtpProvider').value;
+  var preset = PROVIDERS[key] || PROVIDERS.custom;
+  document.getElementById('smtpHost').value = preset.host;
+  document.getElementById('smtpPort').value = preset.port;
+  document.getElementById('smtpDomain').placeholder = preset.domain;
+  document.getElementById('providerHint').textContent = preset.hint;
+}
+
+(function () {
+  var key = document.getElementById('smtpProvider').value;
+  var preset = PROVIDERS[key] || PROVIDERS.custom;
+  document.getElementById('providerHint').textContent = preset.hint;
+  document.getElementById('smtpDomain').placeholder = preset.domain;
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}LOGIN - TRANSPORT{% endblock %}
+{% block content %}
+<div class="loginwrap">
+  <div class="login-card">
+    <div class="login-title">TRANSPORT</div>
+    <div class="login-sub">Vehicle Booking System</div>
+
+    {% if current %}
+    <div class="flash info" style="text-align:left;">
+      <strong>You are already logged in:</strong><br>
+      {{ current.full_name }} ({{ current.username }}) —
+      <span class="pill">{{ current.role|upper }}</span>
+      <div style="margin-top:8px;">
+        <form method="post" action="{{ url_for('logout') }}" class="inline">
+          <button type="submit" class="btn small danger">LOG OUT FIRST</button>
+        </form>
+        <a href="{{ url_for('home') }}" class="btn small">GO TO HOME</a>
+      </div>
+    </div>
+    <div class="hint" style="text-align:center;margin:10px 0;">
+      — or sign in with another account —
+    </div>
+    {% endif %}
+
+    <form method="post">
+      <label>Username</label>
+      <input name="username" required autofocus>
+      <label>Password</label>
+      <input type="password" name="password" required>
+      <button type="submit" class="btn primary" style="width:100%;margin-top:16px;">LOG IN</button>
+    </form>
+    <div style="text-align:center;margin-top:12px;">
+      <a href="{{ url_for('register') }}" class="btn small ok">
+        CREATE ACCOUNT (REQUESTER)
+      </a>
+    </div>
+    <div style="text-align:center;margin-top:16px;">
+      <a href="{{ url_for('download_android_app') }}" class="btn">
+        DOWNLOAD ANDROID APP
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

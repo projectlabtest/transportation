@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trip Ticket {{ b.booking_code }} - Transport</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='26') }}">
+</head>
+<body class="ticket-page">
+  <div class="ticket-toolbar">
+    <a class="btn" href="{{ url_for('booking_detail', booking_id=b.id) }}">BACK TO TRIP</a>
+    <button class="btn primary" type="button" onclick="window.print()">PRINT</button>
+    <div class="ticket-hint">
+      Print setup: <b>A4 Portrait</b>, margins <b>None</b>, scale <b>100%</b>.
+      Cut the A4 in half (crosswise) - 210 x 148.5 mm per ticket.
+    </div>
+  </div>
+  <div class="ticket-sheet">
+  <main class="trip-ticket">
+    <header class="ticket-header">
+      <div class="ticket-division">SOUTHERN ASIA-PACIFIC DIVISION</div>
+      <div class="ticket-address">P.O. Box 040, Silang 4118, Cavite Philippines</div>
+      <div class="ticket-title">TRIP TICKET</div>
+      <div class="ticket-number">TRIP NO. {{ b.booking_code }}</div>
+    </header>
+
+    <div class="ticket-item ticket-requested-label">Requested by</div>
+    <div class="ticket-item ticket-requested-value">{{ b.requester_name }}</div>
+    <div class="ticket-item ticket-date-label">Date</div>
+    <div class="ticket-item ticket-date-value">{{ b.date_created[:10] if b.date_created else '' }}</div>
+
+    <div class="ticket-item ticket-destination-label">Destination and Purpose</div>
+    <div class="ticket-item ticket-destination-value">
+      {{ b.pickup_location or '' }}{% if b.pickup_location and b.dropoff_location %} &rarr; {% endif %}{{ b.dropoff_location or '' }}
+      {% if b.purpose %}<span class="ticket-purpose">{{ b.purpose }}</span>{% endif %}
+    </div>
+
+    <div class="ticket-item ticket-trip-label">Trip Details</div>
+    <div class="ticket-item ticket-out-date-label">Date</div>
+    <div class="ticket-item ticket-out-date-value">{{ b.time_out_at[:10] if b.time_out_at else '' }}</div>
+    <div class="ticket-item ticket-time-out-label">Time OUT</div>
+    <div class="ticket-item ticket-time-out-value">{{ b.time_out_at[11:16] if b.time_out_at else '' }}</div>
+    <div class="ticket-item ticket-km-start-label">KM (start)</div>
+    <div class="ticket-item ticket-km-start-value">{{ '{:,}'.format(b.start_mileage) if b.start_mileage is not none else '' }}</div>
+
+    <div class="ticket-item ticket-return-date-label">Date</div>
+    <div class="ticket-item ticket-return-date-value">{{ b.time_in_at[:10] if b.time_in_at else '' }}</div>
+    <div class="ticket-item ticket-time-in-label">Time IN</div>
+    <div class="ticket-item ticket-time-in-value">{{ b.time_in_at[11:16] if b.time_in_at else '' }}</div>
+    <div class="ticket-item ticket-km-end-label">KM (end)</div>
+    <div class="ticket-item ticket-km-end-value">{{ '{:,}'.format(b.end_mileage) if b.end_mileage is not none else '' }}</div>
+
+    <div class="ticket-item ticket-nature-label">Nature of Trip</div>
+    <div class="ticket-item ticket-official-label">Official</div>
+    <div class="ticket-item ticket-official-box">{% if (b.nature_of_trip or 'official') == 'official' %}✓{% endif %}</div>
+    <div class="ticket-item ticket-personal-label">Personal</div>
+    <div class="ticket-item ticket-personal-box">{% if b.nature_of_trip == 'personal' %}✓{% endif %}</div>
+    <div class="ticket-item ticket-account-line">{{ b.department or '' }}</div>
+    <div class="ticket-item ticket-account-label">Department/Account Name</div>
+
+    <div class="ticket-item ticket-approved-label">Approved by</div>
+    <div class="ticket-item ticket-approved-line">{{ b.guard_approval or b.approver_name or '' }}</div>
+    <div class="ticket-item ticket-driver-label">Driver's Signature</div>
+    <div class="ticket-item ticket-driver-line">{{ b.driver_name or '' }}</div>
+    <div class="ticket-item ticket-vehicle-label">Vehicle</div>
+    <div class="ticket-item ticket-vehicle-line">
+      {{ b.vehicle_name or '' }}{% if b.plate_number %} ({{ b.plate_number }}){% endif %}
+    </div>
+  </main>
+  </div>
+</body>
+</html>
+

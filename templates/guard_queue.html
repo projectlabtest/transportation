@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}APPROVAL QUEUE - TRANSPORT{% endblock %}
+{% set active = 'bookings' %}
+{% block content %}
+<div class="pagehead">
+  <h1>Approval Queue</h1>
+</div>
+
+<p class="hint">
+  Check that the vehicle matches the trip requirement, enter
+  <strong>your name</strong> and the <strong>start odometer</strong>, then
+  <strong>APPROVE</strong>. When the vehicle returns, enter the
+  <strong>END ODO</strong>.
+</p>
+
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>Trip No.</th>
+        <th>Vehicle Type</th>
+        <th>Plate No.</th>
+        <th>Driver</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in bookings %}
+      {% set mismatch = (b.vehicle_type or '') != (b.vehicle_type_needed or '') %}
+      <tr class="{{ 'row-off' if mismatch }}">
+        <td><strong>{{ b.booking_code }}</strong></td>
+        <td>
+          <span class="pill">{{ b.vehicle_type or '—' }}</span>
+          {% if mismatch %}
+          <br><span class="hint">required: {{ b.vehicle_type_needed or 'Not specified' }}</span>
+          {% endif %}
+        </td>
+        <td>{{ b.plate_number or '—' }}</td>
+        <td>{{ b.driver_name or '—' }}</td>
+        <td class="rowbtns">
+          {% if mismatch or not b.driver_name %}
+          <span class="badge declined">MISMATCH - CANNOT APPROVE</span>
+          {% elif not b.guard_approved_at %}
+          <form method="post" action="{{ url_for('guard_approve', booking_id=b.id) }}"
+                class="guard-approve-form">
+            <input type="text" name="guard_name" required maxlength="60"
+                   placeholder="Your name (e.g. Edd Guzman)">
+            <div class="rowbtns">
+              <input type="number" name="start_mileage" min="1" required
+                     class="odo-input" placeholder="Start odo (km)">
+              <button type="submit" class="btn small ok">APPROVE</button>
+            </div>
+          </form>
+          {% elif b.end_mileage is none %}
+          <form method="post" action="{{ url_for('record_odometer', booking_id=b.id) }}" class="inline">
+            <input type="hidden" name="phase" value="end">
+            <input type="number" name="mileage" min="{{ b.start_mileage or 1 }}"
+                   required class="odo-input" placeholder="End odo (km)">
+            <button type="submit" class="btn small primary">END ODO</button>
+          </form>
+          {% else %}
+          <span class="hint">Done</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" class="hint">
+          No trips with an assigned vehicle and driver right now.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2>My Approvals</h2>
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>Oras</th>
+        <th>Trip No.</th>
+        <th>Vehicle</th>
+        <th>Start Odo</th>
+        <th>End Odo</th>
+        <th>Approved by</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in history %}
+      <tr>
+        <td class="small">{{ h.guard_approved_at }}</td>
+        <td><strong>{{ h.booking_code }}</strong></td>
+        <td class="small">
+          {{ h.vehicle_name or '—' }}{% if h.plate_number %} ({{ h.plate_number }}){% endif %}
+        </td>
+        <td>{{ '{:,}'.format(h.start_mileage) if h.start_mileage is not none else '—' }}</td>
+        <td>{{ '{:,}'.format(h.end_mileage) if h.end_mileage is not none else '—' }}</td>
+        <td class="small">MAIN GUARD HOUSE - SG. {{ h.guard_name|upper }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="hint">You have not approved any trips yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

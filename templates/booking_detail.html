@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% block title %}{{ b.booking_code }} - TRANSPORT{% endblock %}
+{% set active = 'my_bookings' %}
+{% block content %}
+<div class="pagehead">
+  <h1>Booking {{ b.booking_code }}</h1>
+  <div class="rowbtns">
+    {% if user.role in ('admin', 'coordinator') %}
+    <a class="btn primary" href="{{ url_for('print_trip_ticket', booking_id=b.id) }}">PRINT TRIP TICKET</a>
+    {% endif %}
+    <span class="badge {{ b.status }}" data-status-for="{{ b.id }}"
+          data-status-label="{{ 'DRIVER ON THE WAY' if b.status == 'on_the_way' else b.status|replace('_',' ')|upper }}">
+      {{ 'DRIVER ON THE WAY' if b.status == 'on_the_way' else b.status|replace('_',' ')|upper }}
+    </span>
+  </div>
+</div>
+{% if b.driver_on_the_way_at %}
+<p class="flash info" data-on-the-way-for="{{ b.id }}">
+  DRIVER ON THE WAY · {{ b.driver_on_the_way_at }}
+</p>
+{% endif %}
+<div data-arrival-cell-for="{{ b.id }}">
+{% if b.driver_arrived_at %}
+<p class="flash ok" data-arrival-for="{{ b.id }}">
+  DRIVER ARRIVED AT PICKUP · {{ b.driver_arrived_at }}
+</p>
+{% endif %}
+</div>
+{% if b.status == 'on_the_way' and not b.driver_arrived_at and
+      (user.role in ('requester', 'coordinator', 'admin')) %}
+<section class="panel" id="driverLocationPanel"
+         data-booking-location="{{ b.id }}">
+  <h2>Driver Live Location</h2>
+  <p class="hint" data-driver-location-message>
+    Waiting for the driver to share their live location.
+  </p>
+  <iframe class="driver-map" title="Driver live location map"
+          data-driver-map hidden loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"></iframe>
+</section>
+{% endif %}
+
+<div class="split">
+  <div class="panel">
+    <h2>Trip Details</h2>
+    <table class="kv">
+      <tr><th>Purpose</th><td>{{ b.purpose }}</td></tr>
+      <tr><th>Nature of Trip</th><td><span class="pill">{{ (b.nature_of_trip or 'official')|capitalize }}</span></td></tr>
+      <tr><th>{{ 'Charged to' if (b.nature_of_trip or 'official') == 'personal' else 'Department / Account' }}</th><td>{{ b.department or '—' }}</td></tr>
+      <tr><th>Requester</th><td>{{ b.requester_name }}</td></tr>
+      <tr><th>Passengers</th><td>{{ b.passenger_count }}</td></tr>
+      <tr><th>Vehicle Type Needed</th><td><span class="pill">{{ b.vehicle_type_needed or '— (coordinator to set)' }}</span></td></tr>
+      <tr><th>Pickup</th><td>
+        {{ b.pickup_location or '—' }}
+        {% if b.pickup_location and b.pickup_lat is not none %}
+        <br><span class="hint">Pinned: {{ '%.5f'|format(b.pickup_lat) }}, {{ '%.5f'|format(b.pickup_lng) }}</span>
+        {% endif %}
+        {% if b.pickup_location %}
+        <br><a class="btn small" target="_blank" rel="noopener"
+               href="{{ maps_directions_url(maps_point(b.pickup_location, b.pickup_lat, b.pickup_lng)) }}">OPEN PICKUP IN MAPS</a>
+        {% endif %}
+      </td></tr>
+      <tr><th>Drop-off</th><td>
+        {{ b.dropoff_location or '—' }}
+        {% if b.dropoff_location %}
+        <br><a class="btn small" target="_blank" rel="noopener"
+               href="{{ maps_directions_url(b.dropoff_location) }}">OPEN DROP-OFF IN MAPS</a>
+        {% endif %}
+      </td></tr>
+      {% if b.pickup_location and b.dropoff_location %}
+      <tr><th>Route</th><td>
+        <a class="btn small primary" target="_blank" rel="noopener"
+           href="{{ maps_directions_url(b.dropoff_location, maps_point(b.pickup_location, b.pickup_lat, b.pickup_lng)) }}">OPEN ROUTE IN MAPS</a>
+      </td></tr>
+      {% endif %}
+      <tr><th>Departure</th><td>{{ b.departure_date }} {{ b.departure_time }}</td></tr>
+      {% if b.flight_type and b.flight_type != 'none' %}
+      <tr><th>Flight</th><td>{{ b.flight_type|capitalize }} {{ b.flight_number }} - departs {{ b.flight_date }} {{ b.flight_time }}</td></tr>
+      {% endif %}
+      <tr><th>Approved by</th><td>{{ b.guard_approval or b.approver_name or '-' }}</td></tr>
+      <tr><th>Time OUT</th><td>{{ b.time_out_at or 'Not recorded' }}</td></tr>
+      <tr><th>Time IN</th><td>{{ b.time_in_at or 'Not recorded' }}</td></tr>
+      <tr><th>Client Pickup</th><td>
+        {% if b.picked_up_at %}
+          <span class="badge completed" data-pickup-status-for="{{ b.id }}">PICKED UP · {{ b.picked_up_at }}</span>
+        {% else %}
+          <span class="badge unassigned" data-pickup-status-for="{{ b.id }}">NOT PICKED UP</span>
+        {% endif %}
+      </td></tr>
+      <tr><th>Client Drop-off</th><td>
+        {% if b.dropped_off_at %}
+          <span class="badge completed">DROPPED OFF · {{ b.dropped_off_at }}</span>
+        {% else %}
+          <span class="badge unassigned">NOT DROPPED OFF</span>
+        {% endif %}
+      </td></tr>
+      <tr><th>Driver Arrival</th><td>
+        {% if b.driver_arrived_at %}
+          <span class="badge completed" data-arrival-status-for="{{ b.id }}">ARRIVED · {{ b.driver_arrived_at }}</span>
+        {% else %}
+          <span class="badge unassigned" data-arrival-status-for="{{ b.id }}">NOT ARRIVED</span>
+        {% endif %}
+      </td></tr>
+      {% if b.is_roundtrip %}
+      <tr><th>Return</th><td>{{ b.return_date }} {{ b.return_time }}</td></tr>
+      {% endif %}
+      <tr><th>Remarks</th><td>{{ b.remarks or '—' }}</td></tr>
+      {% if b.start_mileage is not none %}
+      <tr><th>Start Odometer</th><td>{{ '{:,}'.format(b.start_mileage) }} km</td></tr>
+      {% endif %}
+      {% if b.end_mileage is not none %}
+      <tr><th>End Odometer</th><td>{{ '{:,}'.format(b.end_mileage) }} km</td></tr>
+      <tr><th>Distance Traveled</th><td><strong>{{ '{:,}'.format(b.distance_km or 0) }} km</strong></td></tr>
+      {% endif %}
+      <tr><th>Created</th><td>{{ b.date_created }}</td></tr>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>Assignments ({{ assignments|length }})</h2>
+    {% if assignments %}
+    <table>
+      <thead>
+        <tr><th>Vehicle / Driver</th><th>Status</th><th>Odometer</th></tr>
+      </thead>
+      <tbody>
+        {% for a in assignments %}
+        <tr>
+          <td>
+            {{ a.vehicle_name }} <span class="pill">{{ a.plate_number }}</span>
+            <br><span class="hint">{{ a.driver_name }}{% if a.driver_phone %} · {{ a.driver_phone }}{% endif %}</span>
+          </td>
+          <td><span class="badge {{ a.status }}">{{ a.status|replace('_',' ')|upper }}</span></td>
+          <td class="small">
+            {% if a.start_mileage is not none %}Start: {{ '{:,}'.format(a.start_mileage) }} km{% endif %}
+            {% if a.end_mileage is not none %}<br>End: {{ '{:,}'.format(a.end_mileage) }} km{% endif %}
+            {% if a.distance_km is not none %}<br><strong>{{ '{:,}'.format(a.distance_km) }} km</strong>{% endif %}
+            {% if a.start_mileage is none %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <table class="kv" style="margin-top:10px;">
+      <tr><th>Coordinator Remarks</th><td>{{ b.coordinator_remarks or '—' }}</td></tr>
+    </table>
+    {% else %}
+    <p class="hint">Not yet assigned.</p>
+    {% endif %}
+    {% if b.status in ('approved', 'declined') and b.coordinator_remarks %}
+    <p><strong>Coordinator remarks:</strong> {{ b.coordinator_remarks }}</p>
+    {% endif %}
+
+    {% if b.status in ('pending','approved','assigned') and
+          (user.role in ('admin','coordinator') or user.id == b.requested_by) %}
+    <form method="post" action="{{ url_for('cancel_booking', booking_id=b.id) }}"
+          onsubmit="return confirm('Cancel this booking?');"
+          style="margin-top:14px;">
+      <button type="submit" class="btn danger">CANCEL BOOKING</button>
+    </form>
+    {% endif %}
+
+    {% if user.role in ('admin', 'coordinator') %}
+    <div class="rowbtns" style="margin-top:14px;">
+      <a class="btn small ok"
+         href="mailto:?subject={{ ('Trip Details - ' ~ b.booking_code)|urlencode }}&body={{ email_text(b)|urlencode }}">SEND VIA EMAIL</a>
+    </div>
+    <p class="hint">This opens your email app (Outlook, Gmail, etc.) with the subject and full trip details already filled in.</p>
+    {% endif %}
+  </div>
+</div>
+{% if b.status == 'on_the_way' and not b.driver_arrived_at and
+      (user.role in ('requester', 'coordinator', 'admin')) %}
+<script>
+(function () {
+  var panel = document.getElementById('driverLocationPanel');
+  var bookingId = panel.dataset.bookingLocation;
+  var map = panel.querySelector('[data-driver-map]');
+  var message = panel.querySelector('[data-driver-location-message]');
+  var lastCoordinates = '';
+  var timer = null;
+
+  function updateLocation() {
+    fetch('/api/bookings/' + bookingId + '/driver-location', {
+      headers: { 'Accept': 'application/json' },
+      cache: 'no-store'
+    }).then(function (response) {
+      return response.json().then(function (data) {
+        if (!response.ok) throw new Error(data.error || 'Unable to load driver location.');
+        if (data.arrived_at) {
+          message.textContent = 'Driver arrived at pickup · ' + data.arrived_at;
+          map.hidden = true;
+          if (timer) window.clearInterval(timer);
+          return;
+        }
+        if (data.location) {
+          var point = data.location.latitude + ',' + data.location.longitude;
+          if (point !== lastCoordinates) {
+            map.src = 'https://maps.google.com/maps?q=' +
+              encodeURIComponent(point) + '&z=16&output=embed';
+            lastCoordinates = point;
+          }
+          map.hidden = false;
+          message.textContent =
+            'Live location · updated ' + data.location.updated_at;
+        } else if (data.sharing) {
+          map.hidden = true;
+          message.textContent = 'Driver is sharing location; waiting for a fresh GPS update.';
+        } else {
+          map.hidden = true;
+          message.textContent =
+            'Driver has not started live location sharing, or the last GPS update is stale.';
+        }
+        if (data.status !== 'on_the_way') {
+          message.textContent = 'Live location sharing has ended.';
+          map.hidden = true;
+          if (timer) window.clearInterval(timer);
+        }
+      });
+    }).catch(function (error) {
+      message.textContent = error.message;
+    });
+  }
+
+  updateLocation();
+  timer = window.setInterval(updateLocation, 10000);
+  window.addEventListener('pagehide', function () {
+    if (timer) window.clearInterval(timer);
+  });
+})();
+</script>
+{% endif %}
+
+{% if user.role == 'admin' %}
+<h2>Activity Log <span class="pill">ADMIN ONLY</span></h2>
+<div class="panel">
+  <table>
+    <thead><tr><th>Time</th><th>Action</th><th>By</th><th>Details</th></tr></thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td class="small">{{ log.timestamp }}</td>
+        <td><span class="badge {{ log.action|lower }}">{{ log.action }}</span></td>
+        <td>{{ log.performed_by_name or 'system' }}</td>
+        <td class="small">{{ log.details or '' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="hint">No activity yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endblock %}

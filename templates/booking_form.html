@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}NEW BOOKING - TRANSPORT{% endblock %}
+{% set active = 'booking_form' %}
+{% block content %}
+<h1>New Booking Request</h1>
+
+<form method="post" class="formcard formgrid">
+  <div style="grid-column:1/-1;">
+    <label>Purpose <span class="req">*</span></label>
+    <input name="purpose" required placeholder="e.g. Airport pickup, Church event">
+  </div>
+
+  <div>
+    <label>Nature of Trip <span class="req">*</span></label>
+    <select name="nature_of_trip" id="natureSel" required onchange="toggleNature()">
+      {% for n in natures %}
+      <option value="{{ n }}" {% if n == 'official' %}selected{% endif %}>{{ n|capitalize }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div id="deptField">
+    <label id="deptLabel">Department / Account Name <span class="req">*</span></label>
+    <input name="department" id="deptInput" placeholder="e.g. Human Resources Dept">
+    <div id="deptHint" class="hint" style="display:none;">Charged to: <strong>{{ user.full_name }}</strong></div>
+  </div>
+
+  <div>
+    <label>Number of Passengers <span class="req">*</span></label>
+    <input type="number" name="passenger_count" value="1" min="1" required>
+  </div>
+
+  <div>
+    <label>Pickup Location</label>
+    <input name="pickup_location" id="pickupLocation" placeholder="e.g. LHC Main Gate">
+    <input type="hidden" name="pickup_lat" id="pickupLat">
+    <input type="hidden" name="pickup_lng" id="pickupLng">
+    <button type="button" class="btn small" id="pickupPinBtn" onclick="pinPickup()">
+      📍 USE MY CURRENT LOCATION AS PICKUP POINT
+    </button>
+    <p class="hint" id="pickupPinStatus">
+      Optional: pin the exact pickup point with the device GPS, or paste a Google Maps link/coordinates in Pickup Location for an exact point.
+    </p>
+  </div>
+
+  <div>
+    <label>Drop-off Location</label>
+    <input name="dropoff_location" placeholder="e.g. NAIA Terminal 3">
+  </div>
+
+  <div>
+    <label>Flight?</label>
+    <select name="flight_type" id="flightType" onchange="toggleFlight()">
+      <option value="none" selected>No flight</option>
+      <option value="domestic">Domestic flight (driver leaves 3 hours before)</option>
+      <option value="international">International flight (driver leaves 4 hours before)</option>
+    </select>
+  </div>
+
+  <div class="flightField" style="display:none;">
+    <label>Flight Number</label>
+    <input name="flight_number" placeholder="e.g. PR 105">
+  </div>
+
+  <div class="flightField" style="display:none;">
+    <label>Flight Date <span class="req">*</span></label>
+    <input type="date" name="flight_date" id="flightDate" onchange="previewDriverDeparture()">
+  </div>
+
+  <div class="flightField" style="display:none;">
+    <label>Flight Departure Time <span class="req">*</span></label>
+    <input type="time" name="flight_time" id="flightTime" onchange="previewDriverDeparture()">
+  </div>
+
+  <div class="flightField" style="display:none; grid-column:1/-1;">
+    <p class="hint" id="driverDeparturePreview"></p>
+  </div>
+
+  <div id="depDateField">
+    <label>Departure Date <span class="req">*</span></label>
+    <input type="date" name="departure_date" id="depDate" required>
+  </div>
+
+  <div id="depTimeField">
+    <label>Departure Time</label>
+    <input type="time" name="departure_time" id="depTime">
+  </div>
+
+  <div style="grid-column:1/-1;">
+    <label class="checkline">
+      <input type="checkbox" name="is_roundtrip" id="rtCheck" onchange="toggleRoundtrip()">
+      Round trip?
+    </label>
+  </div>
+
+  <div id="rtFlight" style="display:none;">
+    <label>Return Flight?</label>
+    <select name="return_flight_type" id="retFlightType" onchange="applyRoundtrip()">
+      <option value="none" selected>No flight</option>
+      <option value="domestic">Domestic flight (driver leaves 3 hours before)</option>
+      <option value="international">International flight (driver leaves 4 hours before)</option>
+    </select>
+  </div>
+
+  <div id="rtDate" style="display:none;">
+    <label>Return Date</label>
+    <input type="date" name="return_date" id="retDate">
+  </div>
+  <div id="rtTime" style="display:none;">
+    <label>Return Time</label>
+    <input type="time" name="return_time" id="retTime">
+  </div>
+
+  <div class="retFlightField" style="display:none;">
+    <label>Return Flight Number</label>
+    <input name="return_flight_number" placeholder="e.g. PR 106">
+  </div>
+
+  <div class="retFlightField" style="display:none;">
+    <label>Return Flight Date <span class="req">*</span></label>
+    <input type="date" name="return_flight_date" id="retFlightDate" onchange="previewReturnDeparture()">
+  </div>
+
+  <div class="retFlightField" style="display:none;">
+    <label>Return Flight Departure Time <span class="req">*</span></label>
+    <input type="time" name="return_flight_time" id="retFlightTime" onchange="previewReturnDeparture()">
+  </div>
+
+  <div class="retFlightField" style="display:none; grid-column:1/-1;">
+    <p class="hint" id="retDeparturePreview"></p>
+  </div>
+
+  <div style="grid-column:1/-1;">
+    <label>Remarks / Special Instructions</label>
+    <textarea name="remarks" rows="3" placeholder="Optional notes..."></textarea>
+  </div>
+
+  <div style="grid-column:1/-1;">
+    <button type="submit" class="btn primary">SUBMIT BOOKING</button>
+  </div>
+</form>
+
+<script>
+function toggleFlight() {
+  const type = document.getElementById('flightType').value;
+  const on = type !== 'none';
+  document.querySelectorAll('.flightField').forEach(function (el) {
+    el.style.display = on ? 'block' : 'none';
+  });
+  document.getElementById('depDateField').style.display = on ? 'none' : 'block';
+  document.getElementById('depTimeField').style.display = on ? 'none' : 'block';
+  document.getElementById('depDate').required = !on;
+  previewDriverDeparture();
+}
+function previewLeg(typeId, dateId, timeId, outId) {
+  const type = document.getElementById(typeId).value;
+  const date = document.getElementById(dateId).value;
+  const time = document.getElementById(timeId).value;
+  const out = document.getElementById(outId);
+  if (type === 'none') { out.textContent = ''; return; }
+  if (!date || !time) {
+    out.textContent = 'Enter the flight date and departure time to set the driver departure.';
+    return;
+  }
+  const lead = type === 'international' ? 4 : 3;
+  const flightAt = new Date(date + 'T' + time + ':00');
+  flightAt.setHours(flightAt.getHours() - lead);
+  const pad = function (n) { return String(n).padStart(2, '0'); };
+  const d = flightAt.getFullYear() + '-' + pad(flightAt.getMonth() + 1) + '-' + pad(flightAt.getDate());
+  const t = pad(flightAt.getHours()) + ':' + pad(flightAt.getMinutes());
+  out.innerHTML = 'Driver departs: <strong>' + d + ' ' + t + '</strong> (' + lead + ' hours before the flight)';
+}
+toggleFlight();
+
+function toggleRoundtrip() { applyRoundtrip(); }
+function applyRoundtrip() {
+  const rt = document.getElementById('rtCheck').checked;
+  const retFlight = rt && document.getElementById('retFlightType').value !== 'none';
+  document.getElementById('rtFlight').style.display = rt ? 'block' : 'none';
+  document.getElementById('rtDate').style.display = (rt && !retFlight) ? 'block' : 'none';
+  document.getElementById('rtTime').style.display = (rt && !retFlight) ? 'block' : 'none';
+  document.querySelectorAll('.retFlightField').forEach(function (el) {
+    el.style.display = retFlight ? 'block' : 'none';
+  });
+  previewReturnDeparture();
+}
+function previewDriverDeparture() {
+  previewLeg('flightType', 'flightDate', 'flightTime', 'driverDeparturePreview');
+}
+function previewReturnDeparture() {
+  previewLeg('retFlightType', 'retFlightDate', 'retFlightTime', 'retDeparturePreview');
+}
+function toggleNature() {
+  const official = document.getElementById('natureSel').value === 'official';
+  const input = document.getElementById('deptInput');
+  const hint = document.getElementById('deptHint');
+  const label = document.getElementById('deptLabel');
+  if (official) {
+    input.style.display = 'block';
+    hint.style.display = 'none';
+    input.required = true;
+    label.innerHTML = 'Department / Account Name <span class="req">*</span>';
+  } else {
+    input.style.display = 'none';
+    hint.style.display = 'block';
+    input.required = false;
+    input.value = '';
+    label.innerHTML = 'Charged to (Requester)';
+  }
+}
+toggleNature();
+
+function pinPickup() {
+  var status = document.getElementById('pickupPinStatus');
+  if (!navigator.geolocation) {
+    status.textContent = 'This device has no GPS - paste a Google Maps link in Pickup Location instead.';
+    return;
+  }
+  status.textContent = 'Getting your location...';
+  navigator.geolocation.getCurrentPosition(function (pos) {
+    var lat = pos.coords.latitude.toFixed(6);
+    var lng = pos.coords.longitude.toFixed(6);
+    document.getElementById('pickupLat').value = lat;
+    document.getElementById('pickupLng').value = lng;
+    var field = document.getElementById('pickupLocation');
+    if (!field.value.trim()) { field.value = 'Pinned pickup point'; }
+    status.textContent = 'Pinned: ' + lat + ', ' + lng +
+      ' (accuracy ±' + Math.round(pos.coords.accuracy) + ' m)';
+  }, function (error) {
+    status.textContent = error.code === 1
+      ? 'Location permission denied. Allow GPS or paste a Google Maps link.'
+      : 'Could not get GPS: ' + error.message;
+  }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+}
+</script>
+{% endblock %}
