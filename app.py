@@ -721,6 +721,11 @@ def register_routes(app):
         apk_directory = os.path.join(
             app.root_path, "driver-app", "app", "build",
             "outputs", "apk", "debug")
+        apk_path = os.path.join(apk_directory, "app-debug.apk")
+        if not os.path.isfile(apk_path):
+            return ("The Android APK is not built yet. Build it with "
+                    "Android Studio (driver-app) and place app-debug.apk at "
+                    "driver-app/app/build/outputs/apk/debug/.", 404)
         return send_from_directory(
             apk_directory, "app-debug.apk", as_attachment=True,
             download_name="Transport.apk",
