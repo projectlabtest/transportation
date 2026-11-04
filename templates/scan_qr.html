@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}SCAN QR CODE - TRANSPORT{% endblock %}
+{% block content %}
+<h1>Scan QR Code</h1>
+<p class="hint">Point your camera at a booking QR code to open the trip details.</p>
+
+<div id="reader" style="width:100%; max-width:480px; margin:0 auto;"></div>
+<p id="status" class="hint" style="text-align:center; margin-top:12px;">Starting camera...</p>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+  const status = document.getElementById('status');
+  const reader = new Html5Qrcode('reader');
+  reader.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    (decodedText) => {
+      status.textContent = 'Scanned: ' + decodedText;
+      reader.stop().then(() => {
+        window.location.href = decodedText;
+      }).catch(() => { window.location.href = decodedText; });
+    },
+    (errorMessage) => { /* ignore scan errors */ }
+  ).catch((err) => {
+    status.textContent = 'Camera error: ' + err;
+  });
+</script>
+{% endblock %}

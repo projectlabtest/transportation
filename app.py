@@ -6,6 +6,7 @@ import re
 import smtplib
 import time
 import hashlib
+import io
 import secrets
 from datetime import datetime, timedelta
 from email.message import EmailMessage
@@ -732,6 +733,28 @@ def register_routes(app):
             download_name="Transport.apk",
             mimetype="application/vnd.android.package-archive",
             max_age=0)
+
+    @app.route("/qr/<code>.png")
+    def booking_qr(code):
+        conn = get_db()
+        b = db.fetch_booking(conn, None) if False else None
+        # Look up by booking code.
+        row = conn.execute(
+            "SELECT id FROM bookings WHERE booking_code=?", (code,)).fetchone()
+        if row is None:
+            return ("Not found", 404)
+        import qrcode
+        url = request.url_root.rstrip("/") + url_for("booking_detail", booking_id=row["id"])
+        img = qrcode.make(url)
+        buf = io.BytesIO()
+        img.save(buf, "PNG")
+        buf.seek(0)
+        from flask import send_file
+        return send_file(buf, mimetype="image/png", max_age=0)
+
+    @app.route("/scan")
+    def scan_qr():
+        return render_template("scan_qr.html")
 
     @app.route("/service-worker.js")
     def service_worker():
