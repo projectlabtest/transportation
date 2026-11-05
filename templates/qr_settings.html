@@ -34,7 +34,12 @@
     <h2>Guest Booking QR Code</h2>
     <p class="hint">Visitors scan this QR code to open the guest booking form.</p>
     <img src="{{ url_for('guest_booking_qr') }}" alt="Guest booking QR code"
-         width="200" height="200" style="margin:12px auto;display:block;">
+         width="320" height="320" style="margin:12px auto;display:block;
+         background:#fff; padding:12px; border-radius:8px;">
+    <p style="text-align:center; margin-top:8px;">
+      <a href="{{ url_for('guest_booking_qr') }}" download="guest-booking-qr.png"
+         class="btn small">DOWNLOAD QR CODE</a>
+    </p>
     <p class="hint" style="text-align:center; word-break:break-all;">
       {{ public_url or request.url_root.rstrip('/') }}{{ url_for('guest_booking_form') }}
     </p>

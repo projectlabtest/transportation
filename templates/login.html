@@ -38,10 +38,14 @@
         BOOK AS GUEST (NO ACCOUNT)
       </a>
     </div>
-    <div style="text-align:center;margin-top:16px;">
-      <p class="hint">Visitors: scan this QR code to open the booking form</p>
+    <div style="text-align:center;margin-top:16px; background:#fff;
+                padding:16px; border-radius:12px; max-width:320px; margin-left:auto; margin-right:auto;">
+      <p class="hint" style="color:#333;">Visitors: scan this QR code to open the booking form</p>
       <img src="{{ url_for('guest_booking_qr') }}" alt="Guest booking QR code"
-           width="160" height="160" style="margin:8px auto;display:block;">
+           width="280" height="280" style="margin:8px auto;display:block;">
+      <p style="font-size:12px; color:#666; margin-top:8px;">
+        Or open: <a href="{{ url_for('guest_booking_form') }}">Guest Booking Form</a>
+      </p>
     </div>
     <div style="text-align:center;margin-top:16px;">
       <a href="{{ url_for('download_android_app') }}" class="btn">

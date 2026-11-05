@@ -758,7 +758,10 @@ def register_routes(app):
     def guest_booking_qr():
         import qrcode
         url = public_base_url() + url_for("guest_booking_form")
-        img = qrcode.make(url)
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
         buf = io.BytesIO()
         img.save(buf, "PNG")
         buf.seek(0)
@@ -776,7 +779,10 @@ def register_routes(app):
             return ("Not found", 404)
         import qrcode
         url = public_base_url() + url_for("booking_detail", booking_id=row["id"])
-        img = qrcode.make(url)
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
         buf = io.BytesIO()
         img.save(buf, "PNG")
         buf.seek(0)
