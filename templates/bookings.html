@@ -30,9 +30,17 @@
 </form>
 
 <div class="panel">
-  <table>
+  <form method="post" action="{{ url_for('group_bookings') }}" id="groupForm">
+    <div style="margin-bottom:8px;">
+      <button type="submit" class="btn small primary" onclick="return confirmGroup()">
+        GROUP SELECTED BOOKINGS
+      </button>
+      <span class="hint">Select 2+ bookings with the same departure date.</span>
+    </div>
+    <table>
     <thead>
       <tr>
+        <th><input type="checkbox" id="selectAll" onclick="toggleAll(this)"></th>
         <th>Code</th><th>Requester</th><th>Purpose</th><th>Pax</th>
         <th>Type Needed</th><th>Route</th><th>Departure</th>
         <th>Assigned</th><th>Status</th><th>Driver Arrival</th><th>Client Pickup</th><th>Actions</th>
@@ -41,6 +49,8 @@
     <tbody>
       {% for b in bookings %}
       <tr data-booking-id="{{ b.id }}">
+        <td><input type="checkbox" name="booking_ids" value="{{ b.id }}"
+                   class="group-cb" {% if b.status not in ('pending','approved') %}disabled{% endif %}></td>
         <td><a href="{{ url_for('booking_detail', booking_id=b.id) }}"><strong>{{ b.booking_code }}</strong></a></td>
         <td>{{ b.requester_name }}{% if b.is_guest %} <span class="pill">GUEST</span>{% endif %}</td>
         <td>
@@ -141,6 +151,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </form>
 </div>
 
 <!-- Assign modal -->
@@ -285,6 +296,21 @@ function promptDecline(form) {
   }
   form.querySelector('[name="coordinator_remarks"]').value = reason.trim();
   return true;
+}
+</script>
+<script>
+function toggleAll(cb) {
+  document.querySelectorAll('.group-cb').forEach(function (el) {
+    if (!el.disabled) el.checked = cb.checked;
+  });
+}
+function confirmGroup() {
+  var checked = document.querySelectorAll('.group-cb:checked');
+  if (checked.length < 2) {
+    alert('Select at least 2 bookings to group.');
+    return false;
+  }
+  return confirm('Group ' + checked.length + ' selected bookings into one trip?');
 }
 </script>
 {% endblock %}

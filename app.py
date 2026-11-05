@@ -1209,7 +1209,8 @@ def register_routes(app):
         conn = get_db()
         user = g.mobile_user
         if request.method == "GET":
-            rows = db.fetch_bookings(conn, requested_by=user["id"])
+            rows = db.fetch_bookings(conn, requested_by=user["id"],
+                                     include_merged=True)
             return jsonify({
                 "user": user,
                 "bookings": [_mobile_trip_payload(row) for row in rows],
@@ -1734,7 +1735,8 @@ def register_routes(app):
             return jsonify({"bookings": []}), 401
         conn = get_db()
         if user["role"] == "requester":
-            rows = db.fetch_bookings(conn, requested_by=user["id"])
+            rows = db.fetch_bookings(conn, requested_by=user["id"],
+                                     include_merged=True)
         elif user["role"] == "driver":
             rows = db.fetch_bookings(conn, driver_id=user["id"])
         else:
@@ -2553,6 +2555,67 @@ def register_routes(app):
     def guest_booking_done(code):
         return render_template("guest_booking_done.html", code=code)
 
+    # ---------------- Coordinator: Group (merge) bookings ---------------- #
+    @app.route("/bookings/group", methods=["POST"])
+    @role_required("coordinator", "admin")
+    def group_bookings():
+        conn = get_db()
+        user = current_user()
+        ids = request.form.getlist("booking_ids")
+        try:
+            ids = [int(x) for x in ids]
+        except (ValueError, TypeError):
+            ids = []
+        ids = sorted(set(ids))
+        if len(ids) < 2:
+            flash("Select at least 2 bookings to group.", "error")
+            return redirect(url_for("bookings"))
+
+        rows = []
+        for bid in ids:
+            b = db.fetch_booking(conn, bid)
+            if not b or b["status"] not in ("pending", "approved", "assigned"):
+                flash(f"Booking {bid} is not available for grouping.", "error")
+                return redirect(url_for("bookings"))
+            rows.append(b)
+
+        # Check same departure date
+        dates = {r["departure_date"] for r in rows}
+        if len(dates) > 1:
+            flash("Bookings must have the same departure date to be grouped.",
+                  "error")
+            return redirect(url_for("bookings"))
+
+        # Pick the first (lowest id) as primary
+        primary = rows[0]
+        others = rows[1:]
+        total_pax = sum(r["passenger_count"] or 0 for r in rows)
+        codes = [r["booking_code"] for r in rows]
+        note = "Grouped bookings: " + ", ".join(codes)
+
+        # Update primary booking
+        conn.execute(
+            "UPDATE bookings SET passenger_count=?, merged_note=?,"
+            " date_updated=? WHERE id=?",
+            (total_pax, note, _now(), primary["id"]))
+        db.log_action(conn, primary["id"], "GROUPED", user["id"],
+                      f"Grouped {len(rows)} bookings ({', '.join(codes)}) "
+                      f"-> {total_pax} pax total")
+
+        # Mark others as merged
+        for r in others:
+            conn.execute(
+                "UPDATE bookings SET status='merged', merged_into=?,"
+                " merged_note=?, date_updated=? WHERE id=?",
+                (primary["id"], note, _now(), r["id"]))
+            db.log_action(conn, r["id"], "MERGED", user["id"],
+                          f"Merged into {primary['booking_code']}")
+
+        conn.commit()
+        flash(f"Grouped {len(rows)} bookings into {primary['booking_code']} "
+              f"({total_pax} passengers).", "ok")
+        return redirect(url_for("bookings"))
+
     @app.route("/bookings/<int:booking_id>/cancel", methods=["POST"])
     @role_required("requester", "admin")
     def cancel_booking(booking_id):
@@ -2587,7 +2650,8 @@ def register_routes(app):
     def my_bookings():
         conn = get_db()
         user = current_user()
-        rows = db.fetch_bookings(conn, requested_by=user["id"])
+        rows = db.fetch_bookings(conn, requested_by=user["id"],
+                         include_merged=True)
         return render_template("my_bookings.html", bookings=rows)
 
     # ---------------- Driver: My trips ---------------- #

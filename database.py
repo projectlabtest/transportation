@@ -99,6 +99,8 @@ CREATE TABLE IF NOT EXISTS bookings (
     ssd_gate_candidate_state TEXT,
     ssd_gate_candidate_count INTEGER DEFAULT 0,
     coordinator_remarks TEXT DEFAULT '',
+    merged_into INTEGER REFERENCES bookings(id),
+    merged_note TEXT DEFAULT '',
     date_created TEXT DEFAULT (datetime('now', 'localtime')),
     date_updated TEXT DEFAULT (datetime('now', 'localtime'))
 );
@@ -251,6 +253,8 @@ def init_db():
             ("pickup_map_opened_at", "TEXT"),
             ("pickup_lat", "REAL"),
             ("pickup_lng", "REAL"),
+            ("merged_into", "INTEGER"),
+            ("merged_note", "TEXT DEFAULT ''"),
             ("flight_type", "TEXT DEFAULT 'none'"),
             ("flight_number", "TEXT DEFAULT ''"),
             ("flight_date", "TEXT DEFAULT ''"),
@@ -415,7 +419,7 @@ def fetch_vehicles(conn, vtype=None, status=None, available_only=False):
 
 
 def fetch_bookings(conn, status=None, requested_by=None, driver_id=None,
-                   date_from=None, date_to=None):
+                   date_from=None, date_to=None, include_merged=False):
     q = ("SELECT b.*,"
          " COALESCE(CASE WHEN b.is_guest=1 THEN b.guest_name END, ru.full_name)"
          " AS requester_name,"
@@ -433,7 +437,10 @@ def fetch_bookings(conn, status=None, requested_by=None, driver_id=None,
          " LEFT JOIN vehicles v ON v.id = b.assigned_vehicle_id"
          " LEFT JOIN users du ON du.id = b.assigned_driver_id"
          " LEFT JOIN users au ON au.id = b.approved_by"
-         " WHERE 1=1")
+         " WHERE 1=1"
+         + (" AND (b.status IS NULL OR b.status != 'merged')"
+            if not include_merged else ""))
+
     args = []
     if status:
         q += " AND b.status = ?"
