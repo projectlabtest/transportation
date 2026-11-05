@@ -273,17 +273,20 @@ def public_base_url():
     Configurable via the TRANSPORT_PUBLIC_URL env var or the
     'public_url' app setting so QR codes work on mobile devices.
     """
-    env = os.environ.get("TRANSPORT_PUBLIC_URL", "").strip()
-    if env:
-        return env.rstrip("/")
-    try:
-        conn = get_db()
-        row = conn.execute(
-            "SELECT value FROM app_settings WHERE key='public_url'").fetchone()
-        if row and row["value"].strip():
-            return row["value"].strip().rstrip("/")
-    except Exception:
-        pass
+    value = os.environ.get("TRANSPORT_PUBLIC_URL", "").strip()
+    if not value:
+        try:
+            conn = get_db()
+            row = conn.execute(
+                "SELECT value FROM app_settings WHERE key='public_url'").fetchone()
+            if row and row["value"].strip():
+                value = row["value"].strip()
+        except Exception:
+            pass
+    if value:
+        if not value.startswith(("http://", "https://")):
+            value = "http://" + value
+        return value.rstrip("/")
     return request.url_root.rstrip("/")
 
 
