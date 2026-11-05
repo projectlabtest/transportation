@@ -29,6 +29,7 @@
         <div class="gear-panel">
           {% if session.user.role == 'admin' %}
           <a href="{{ url_for('settings') }}">EMAIL SETTINGS</a>
+          <a href="{{ url_for('qr_settings') }}">QR CODE SETTINGS</a>
           {% endif %}
           <a href="{{ url_for('change_password') }}">CHANGE PASSWORD</a>
         </div>

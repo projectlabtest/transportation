@@ -1669,7 +1669,7 @@ def register_routes(app):
                 sender = request.form.get("smtp_from", "").strip()
                 fields = ("smtp_provider", "smtp_domain", "smtp_host",
                           "smtp_port", "smtp_user", "smtp_password",
-                          "smtp_from", "public_url")
+                          "smtp_from")
                 for key in fields:
                     value = request.form.get(key, "").strip()
                     if key == "smtp_password" and not value:
@@ -1696,13 +1696,26 @@ def register_routes(app):
 
         current = smtp_settings()
         saved_password = bool(current["password"])
-        conn2 = get_db()
-        pu_row = conn2.execute(
+        return render_template("settings.html", smtp=current,
+                               saved_password=saved_password)
+
+    @app.route("/settings/qr", methods=["GET", "POST"])
+    @role_required("admin")
+    def qr_settings():
+        conn = get_db()
+        if request.method == "POST":
+            value = request.form.get("public_url", "").strip()
+            conn.execute(
+                "INSERT INTO app_settings (key, value) VALUES (?,?)"
+                " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                ("public_url", value))
+            conn.commit()
+            flash("QR code settings saved.", "ok")
+            return redirect(url_for("qr_settings"))
+        pu_row = conn.execute(
             "SELECT value FROM app_settings WHERE key='public_url'").fetchone()
         public_url = pu_row["value"] if pu_row else ""
-        return render_template("settings.html", smtp=current,
-                               saved_password=saved_password,
-                               public_url=public_url)
+        return render_template("qr_settings.html", public_url=public_url)
 
     # ---------------- API: live updates (polling) ---------------- #
     @app.route("/api/updates")

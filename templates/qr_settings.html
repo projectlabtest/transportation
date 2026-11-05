@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}QR CODE SETTINGS - TRANSPORT{% endblock %}
+{% set active = 'qr_settings' %}
+{% block content %}
+<div class="pagehead">
+  <h1>QR Code Settings</h1>
+</div>
+
+<div class="split">
+  <div class="panel">
+    <h2>Public URL for QR Codes</h2>
+    <p class="hint">
+      Set this to your server's public address so QR codes open correctly on
+      mobile devices. Leave blank to use the current URL (localhost).
+    </p>
+    <form method="post">
+      <input type="hidden" name="action" value="save">
+
+      <label>Public URL</label>
+      <input name="public_url" value="{{ public_url }}"
+             placeholder="https://your-server.com or http://192.168.1.100:5001">
+      <p class="hint">Examples:
+        <strong>http://192.168.1.100:5001</strong> (local network) or
+        <strong>https://transport.example.com</strong> (internet).
+      </p>
+
+      <div class="rowbtns" style="margin-top:14px;">
+        <button type="submit" class="btn primary">SAVE</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h2>Guest Booking QR Code</h2>
+    <p class="hint">Visitors scan this QR code to open the guest booking form.</p>
+    <img src="{{ url_for('guest_booking_qr') }}" alt="Guest booking QR code"
+         width="200" height="200" style="margin:12px auto;display:block;">
+    <p class="hint" style="text-align:center; word-break:break-all;">
+      {{ public_url or request.url_root.rstrip('/') }}{{ url_for('guest_booking_form') }}
+    </p>
+  </div>
+</div>
+{% endblock %}
