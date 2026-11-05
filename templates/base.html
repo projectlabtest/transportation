@@ -57,7 +57,6 @@
     {% elif role == 'requester' %}
       <a href="{{ url_for('my_bookings') }}" class="{{ 'active' if active=='my_bookings' }}">MY BOOKINGS</a>
     {% endif %}
-    <a href="{{ url_for('scan_qr') }}" class="{{ 'active' if active=='scan' }}">SCAN QR</a>
   {% endif %}
 
   <div class="container">
