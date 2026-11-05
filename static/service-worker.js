@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'lhc-transport-static-v19';
+const CACHE_NAME = 'lhc-transport-static-v20';
 const STATIC_ASSETS = [
   '/static/style.css',
   '/static/manifest.webmanifest',
