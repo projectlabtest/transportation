@@ -267,6 +267,26 @@ def resolve_leg(get, date_key, time_key, prefix=""):
     }, None
 
 
+def public_base_url():
+    """Base URL used in QR codes and links sent to visitors.
+
+    Configurable via the TRANSPORT_PUBLIC_URL env var or the
+    'public_url' app setting so QR codes work on mobile devices.
+    """
+    env = os.environ.get("TRANSPORT_PUBLIC_URL", "").strip()
+    if env:
+        return env.rstrip("/")
+    try:
+        conn = get_db()
+        row = conn.execute(
+            "SELECT value FROM app_settings WHERE key='public_url'").fetchone()
+        if row and row["value"].strip():
+            return row["value"].strip().rstrip("/")
+    except Exception:
+        pass
+    return request.url_root.rstrip("/")
+
+
 def maps_directions_url(destination, origin=None):
     params = {"api": "1", "destination": destination}
     if origin:
@@ -737,7 +757,7 @@ def register_routes(app):
     @app.route("/qr/guest.png")
     def guest_booking_qr():
         import qrcode
-        url = request.url_root.rstrip("/") + url_for("guest_booking_form")
+        url = public_base_url() + url_for("guest_booking_form")
         img = qrcode.make(url)
         buf = io.BytesIO()
         img.save(buf, "PNG")
@@ -755,7 +775,7 @@ def register_routes(app):
         if row is None:
             return ("Not found", 404)
         import qrcode
-        url = request.url_root.rstrip("/") + url_for("booking_detail", booking_id=row["id"])
+        url = public_base_url() + url_for("booking_detail", booking_id=row["id"])
         img = qrcode.make(url)
         buf = io.BytesIO()
         img.save(buf, "PNG")
@@ -1649,7 +1669,7 @@ def register_routes(app):
                 sender = request.form.get("smtp_from", "").strip()
                 fields = ("smtp_provider", "smtp_domain", "smtp_host",
                           "smtp_port", "smtp_user", "smtp_password",
-                          "smtp_from")
+                          "smtp_from", "public_url")
                 for key in fields:
                     value = request.form.get(key, "").strip()
                     if key == "smtp_password" and not value:
@@ -1676,8 +1696,13 @@ def register_routes(app):
 
         current = smtp_settings()
         saved_password = bool(current["password"])
+        conn2 = get_db()
+        pu_row = conn2.execute(
+            "SELECT value FROM app_settings WHERE key='public_url'").fetchone()
+        public_url = pu_row["value"] if pu_row else ""
         return render_template("settings.html", smtp=current,
-                               saved_password=saved_password)
+                               saved_password=saved_password,
+                               public_url=public_url)
 
     # ---------------- API: live updates (polling) ---------------- #
     @app.route("/api/updates")

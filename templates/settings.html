@@ -57,6 +57,12 @@
                {{ 'checked' if smtp.tls }}> Use STARTTLS (port 587)
       </label>
 
+      <label>Public URL (for QR codes on mobile)</label>
+      <input name="public_url" value="{{ public_url }}"
+             placeholder="https://your-server.com">
+      <p class="hint">Set this to your server's public address so QR codes
+        open correctly on mobile devices. Leave blank to use the current URL.</p>
+
       <div class="rowbtns" style="margin-top:14px;">
         <button type="submit" class="btn primary">SAVE EMAIL SETTINGS</button>
       </div>
