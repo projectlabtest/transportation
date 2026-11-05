@@ -2444,9 +2444,7 @@ def register_routes(app):
             guest_user_id = sys_user["id"]
             purpose = request.form.get("purpose", "").strip()
             passenger_count = max(1, _int_field(request.form, "passenger_count", 1))
-            vtype = request.form.get("vehicle_type_needed", "").strip()
-            if vtype not in db.VEHICLE_TYPES:
-                vtype = ""
+            vtype = ""
             pickup = request.form.get("pickup_location", "").strip()
             dropoff = request.form.get("dropoff_location", "").strip()
             dep_date = request.form.get("departure_date", "").strip()
@@ -2549,8 +2547,7 @@ def register_routes(app):
                               f"to track your trip.", "ok")
                     return redirect(url_for("guest_booking_done",
                                             code=codes[0]))
-        return render_template("guest_booking.html",
-                               vtypes=db.VEHICLE_TYPES)
+        return render_template("guest_booking.html")
 
     @app.route("/bookings/guest/done/<code>")
     def guest_booking_done(code):

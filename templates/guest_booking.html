@@ -31,15 +31,6 @@
     <input type="number" name="passenger_count" value="1" min="1" required>
   </div>
 
-  <div>
-    <label>Vehicle Type Needed</label>
-    <select name="vehicle_type_needed">
-      <option value="">Coordinator will decide</option>
-      {% for v in vtypes %}
-      <option value="{{ v }}">{{ v }}</option>
-      {% endfor %}
-    </select>
-  </div>
 
   <div>
     <label>Pickup Location</label>
