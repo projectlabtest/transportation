@@ -78,6 +78,9 @@
       </td></tr>
       {% endif %}
       <tr><th>Departure</th><td>{{ b.departure_date }} {{ b.departure_time }}</td></tr>
+      {% if b.merged_note %}
+      <tr><th>Grouped</th><td>{{ b.merged_note }}</td></tr>
+      {% endif %}
       <tr><th>QR Code</th><td><img src="{{ url_for('booking_qr', code=b.booking_code) }}"
             alt="QR code for {{ b.booking_code }}" width="120" height="120"></td></tr>
       {% if b.flight_type and b.flight_type != 'none' %}

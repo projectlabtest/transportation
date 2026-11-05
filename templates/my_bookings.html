@@ -40,6 +40,10 @@
                 data-status-label="{{ 'DRIVER ON THE WAY' if b.status == 'on_the_way' else b.status|replace('_',' ')|upper }}">
             {{ 'DRIVER ON THE WAY' if b.status == 'on_the_way' else b.status|replace('_',' ')|upper }}
           </span>
+          {% if b.status == 'merged' %}
+          <div class="hint">Merged into another booking. See the main booking for trip details.</div>
+          {% if b.merged_note %}<div class="hint">{{ b.merged_note }}</div>{% endif %}
+          {% endif %}
           {% if b.driver_on_the_way_at %}
           <div class="hint" data-on-the-way-for="{{ b.id }}">Driver on the way · {{ b.driver_on_the_way_at }}</div>
           {% endif %}
