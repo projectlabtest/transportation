@@ -23,10 +23,11 @@
   <a href="{{ url_for('audit_log') }}" class="btn small">CLEAR</a>
 </form>
 
-<div class="panel" style="max-height:60vh; overflow-y:auto; overflow-x:auto;">
-  <table style="position:relative;">
+<div style="max-height:60vh; overflow-y:auto; overflow-x:auto; border:1px solid var(--border); border-radius:8px; background:var(--card);">
+  <table style="width:100%; position:relative;">
     <thead style="position:sticky; top:0; background:#fff; z-index:1;">
-    <thead><tr><th>Time</th><th>Type</th><th>Booking</th><th>Action</th><th>By</th><th>Details</th><th>IP</th></tr></thead>
+      <tr><th>Time</th><th>Type</th><th>Booking</th><th>Action</th><th>By</th><th>Details</th><th>IP</th></tr>
+    </thead>
     <tbody>
       {% for log in logs %}
       <tr>
