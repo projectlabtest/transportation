@@ -30,14 +30,13 @@
 </form>
 
 <div class="panel">
-  <form method="post" action="{{ url_for('group_bookings') }}" id="groupForm">
-    <div style="margin-bottom:8px;">
-      <button type="submit" class="btn small primary" onclick="return confirmGroup()">
-        GROUP SELECTED BOOKINGS
-      </button>
-      <span class="hint">Select 2+ bookings with the same departure date.</span>
-    </div>
-    <table>
+  <div style="margin-bottom:8px;">
+    <button type="button" class="btn small primary" onclick="submitGroup()">
+      GROUP SELECTED BOOKINGS
+    </button>
+    <span class="hint">Select 2+ bookings with the same departure date.</span>
+  </div>
+  <table>
     <thead>
       <tr>
         <th><input type="checkbox" id="selectAll" onclick="toggleAll(this)"></th>
@@ -151,7 +150,6 @@
       {% endfor %}
     </tbody>
   </table>
-  </form>
 </div>
 
 <!-- Assign modal -->
@@ -304,13 +302,27 @@ function toggleAll(cb) {
     if (!el.disabled) el.checked = cb.checked;
   });
 }
-function confirmGroup() {
+function submitGroup() {
   var checked = document.querySelectorAll('.group-cb:checked');
   if (checked.length < 2) {
     alert('Select at least 2 bookings to group.');
-    return false;
+    return;
   }
-  return confirm('Group ' + checked.length + ' selected bookings into one trip?');
+  if (!confirm('Group ' + checked.length + ' selected bookings into one trip?')) {
+    return;
+  }
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '{{ url_for("group_bookings") }}';
+  checked.forEach(function (cb) {
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'booking_ids';
+    input.value = cb.value;
+    form.appendChild(input);
+  });
+  document.body.appendChild(form);
+  form.submit();
 }
 </script>
 {% endblock %}
