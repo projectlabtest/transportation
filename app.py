@@ -822,6 +822,10 @@ def register_routes(app):
                     "full_name": row["full_name"],
                     "role": row["role"],
                 }
+                db.log_audit(conn, row["id"], "LOGIN",
+                             f"{row['full_name']} ({row['role']}) logged in",
+                             request.remote_addr or "")
+                conn.commit()
                 flash(f"Welcome, {row['full_name']}!", "ok")
                 return redirect(url_for("home"))
             flash("Invalid username or password.", "error")
@@ -920,14 +924,19 @@ def register_routes(app):
                         (username, db.hash_password(password), full_name,
                          role, phone, email))
                     conn.commit()
+                    new_user_id = conn.execute(
+                        "SELECT id FROM users WHERE username=?",
+                        (username,)).fetchone()["id"]
                     session["user"] = {
-                        "id": conn.execute(
-                            "SELECT id FROM users WHERE username=?",
-                            (username,)).fetchone()["id"],
+                        "id": new_user_id,
                         "username": username,
                         "full_name": full_name,
                         "role": role,
                     }
+                    db.log_audit(conn, new_user_id, "REGISTER",
+                                 f"New {role} account: {full_name} ({username})",
+                                 request.remote_addr or "")
+                    conn.commit()
                     flash(f"Welcome, {full_name}! Your email is verified "
                           f"and your account is ready.", "ok")
                     return redirect(url_for(
@@ -937,6 +946,13 @@ def register_routes(app):
 
     @app.route("/logout", methods=["POST"])
     def logout():
+        user = session.get("user")
+        if user:
+            conn = get_db()
+            db.log_audit(conn, user["id"], "LOGOUT",
+                         f"{user['full_name']} ({user['role']}) logged out",
+                         request.remote_addr or "")
+            conn.commit()
         session.clear()
         flash("Logged out.", "ok")
         return redirect(url_for("login"))
@@ -971,6 +987,9 @@ def register_routes(app):
                 conn.execute(
                     "UPDATE users SET password_hash=? WHERE id=?",
                     (db.hash_password(new), user["id"]))
+                db.log_audit(conn, user["id"], "PASSWORD_CHANGE",
+                              f"{user['full_name']} changed their password",
+                              request.remote_addr or "")
                 conn.commit()
                 flash("Your password has been updated.", "ok")
                 return redirect(url_for("home"))
@@ -997,10 +1016,14 @@ def register_routes(app):
             return jsonify({"error": "Invalid username or password."}), 401
         if row["role"] not in db.ROLES:
             return jsonify({"error": "This account role is not supported."}), 403
+        conn = get_db()
+        db.log_audit(conn, row["id"], "MOBILE_LOGIN",
+                     f"{row['full_name']} ({row['role']}) logged in via mobile API",
+                     request.remote_addr or "")
+        conn.commit()
         token = secrets.token_urlsafe(48)
         expires_at = int(time.time()) + 30 * 24 * 60 * 60
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
-        conn = get_db()
         conn.execute(
             "INSERT INTO mobile_api_tokens (user_id, token_hash, expires_at)"
             " VALUES (?,?,?)", (row["id"], token_hash, expires_at))
@@ -1743,7 +1766,9 @@ def register_routes(app):
             "SELECT id, full_name, username, role FROM users ORDER BY full_name"
         ).fetchall()
         actions = [r[0] for r in conn.execute(
-            "SELECT DISTINCT action FROM booking_logs ORDER BY action").fetchall()]
+            "SELECT DISTINCT action FROM ("
+            "SELECT action FROM booking_logs UNION "
+            "SELECT action FROM audit_logs) ORDER BY action").fetchall()]
         return render_template("audit_log.html", logs=logs, users=users,
                                actions=actions, action_filter=action_filter,
                                user_filter=user_filter)

@@ -168,6 +168,15 @@ CREATE INDEX IF NOT EXISTS idx_booking_assignments_booking
     ON booking_assignments(booking_id);
 CREATE INDEX IF NOT EXISTS idx_booking_assignments_driver
     ON booking_assignments(driver_id);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT DEFAULT (datetime('now', 'localtime')),
+    user_id INTEGER REFERENCES users(id),
+    action TEXT NOT NULL,
+    details TEXT DEFAULT '',
+    ip_address TEXT DEFAULT ''
+);
 """
 
 VEHICLE_TYPES = ("Van", "Sedan", "SUV", "Bus")
@@ -386,6 +395,13 @@ def log_action(conn, booking_id, action, performed_by, details=""):
         (booking_id, action, performed_by, details))
 
 
+def log_audit(conn, user_id, action, details="", ip_address=""):
+    conn.execute(
+        "INSERT INTO audit_logs (user_id, action, details, ip_address)"
+        " VALUES (?,?,?,?)",
+        (user_id, action, details, ip_address))
+
+
 # ---------------------------------------------------------------------- #
 # Queries
 # ---------------------------------------------------------------------- #
@@ -487,21 +503,41 @@ def fetch_booking(conn, booking_id):
 
 
 def fetch_all_logs(conn, limit=200, action=None, user_id=None):
-    """System-wide audit log across all bookings (admin only)."""
-    q = ("SELECT l.*, b.booking_code, u.full_name AS performed_by_name "
-         "FROM booking_logs l "
-         "LEFT JOIN bookings b ON b.id = l.booking_id "
-         "LEFT JOIN users u ON u.id = l.performed_by "
-         "WHERE 1=1")
-    args = []
+    """System-wide audit log across all bookings and system events (admin only)."""
+    # Booking logs
+    bq = ("SELECT l.id, l.timestamp, l.action, l.details, l.performed_by AS user_id,"
+          " b.booking_code, l.booking_id, u.full_name AS performed_by_name, "
+          " 'booking' AS source, '' AS ip_address "
+          "FROM booking_logs l "
+          "LEFT JOIN bookings b ON b.id = l.booking_id "
+          "LEFT JOIN users u ON u.id = l.performed_by "
+          "WHERE 1=1")
+    bargs = []
     if action:
-        q += " AND l.action = ?"
-        args.append(action)
+        bq += " AND l.action = ?"
+        bargs.append(action)
     if user_id:
-        q += " AND l.performed_by = ?"
-        args.append(user_id)
-    q += " ORDER BY l.id DESC LIMIT ?"
-    args.append(limit)
+        bq += " AND l.performed_by = ?"
+        bargs.append(user_id)
+
+    # Audit logs (login, logout, etc.)
+    aq = ("SELECT a.id + 1000000 AS id, a.timestamp, a.action, a.details,"
+          " a.user_id, NULL AS booking_code, NULL AS booking_id,"
+          " u.full_name AS performed_by_name,"
+          " 'system' AS source, a.ip_address "
+          "FROM audit_logs a "
+          "LEFT JOIN users u ON u.id = a.user_id "
+          "WHERE 1=1")
+    aargs = []
+    if action:
+        aq += " AND a.action = ?"
+        aargs.append(action)
+    if user_id:
+        aq += " AND a.user_id = ?"
+        aargs.append(user_id)
+
+    q = bq + " UNION ALL " + aq + " ORDER BY timestamp DESC, id DESC LIMIT ?"
+    args = bargs + aargs + [limit]
     return conn.execute(q, args).fetchall()
 
 

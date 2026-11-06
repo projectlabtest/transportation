@@ -25,11 +25,12 @@
 
 <div class="panel">
   <table>
-    <thead><tr><th>Time</th><th>Booking</th><th>Action</th><th>By</th><th>Details</th></tr></thead>
+    <thead><tr><th>Time</th><th>Type</th><th>Booking</th><th>Action</th><th>By</th><th>Details</th><th>IP</th></tr></thead>
     <tbody>
       {% for log in logs %}
       <tr>
         <td class="small">{{ log.timestamp }}</td>
+        <td><span class="pill">{{ log.source }}</span></td>
         <td>
           {% if log.booking_code %}
           <a href="{{ url_for('booking_detail', booking_id=log.booking_id) }}">{{ log.booking_code }}</a>
@@ -38,9 +39,10 @@
         <td><span class="badge {{ log.action|lower }}">{{ log.action }}</span></td>
         <td>{{ log.performed_by_name or 'system' }}</td>
         <td class="small">{{ log.details or '' }}</td>
+        <td class="small">{{ log.ip_address or '' }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="5" class="hint">No activity yet.</td></tr>
+      <tr><td colspan="7" class="hint">No activity yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>
