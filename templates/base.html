@@ -47,6 +47,7 @@
       <a href="{{ url_for('bookings') }}" class="{{ 'active' if active=='bookings' }}">BOOKINGS</a>
       <a href="{{ url_for('vehicles') }}" class="{{ 'active' if active=='vehicles' }}">VEHICLES</a>
       <a href="{{ url_for('users') }}" class="{{ 'active' if active=='users' }}">USERS</a>
+      <a href="{{ url_for('audit_log') }}" class="{{ 'active' if active=='audit_log' }}">AUDIT LOG</a>
     {% elif role == 'coordinator' %}
       <a href="{{ url_for('bookings') }}" class="{{ 'active' if active=='bookings' }}">BOOKING QUEUE</a>
       <a href="{{ url_for('vehicles') }}" class="{{ 'active' if active=='vehicles' }}">FLEET</a>

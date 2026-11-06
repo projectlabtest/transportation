@@ -1727,6 +1727,27 @@ def register_routes(app):
         public_url = pu_row["value"] if pu_row else ""
         return render_template("qr_settings.html", public_url=public_url)
 
+    # ---------------- Admin: Audit Log ---------------- #
+    @app.route("/audit-log")
+    @role_required("admin")
+    def audit_log():
+        conn = get_db()
+        action_filter = request.args.get("action", "").strip()
+        user_filter = request.args.get("user_id", "").strip()
+        uid = int(user_filter) if user_filter.isdigit() else None
+        logs = db.fetch_all_logs(
+            conn, limit=500,
+            action=action_filter or None,
+            user_id=uid)
+        users = conn.execute(
+            "SELECT id, full_name, username, role FROM users ORDER BY full_name"
+        ).fetchall()
+        actions = [r[0] for r in conn.execute(
+            "SELECT DISTINCT action FROM booking_logs ORDER BY action").fetchall()]
+        return render_template("audit_log.html", logs=logs, users=users,
+                               actions=actions, action_filter=action_filter,
+                               user_filter=user_filter)
+
     # ---------------- API: live updates (polling) ---------------- #
     @app.route("/api/updates")
     def api_updates():

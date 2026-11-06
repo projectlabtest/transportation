@@ -486,6 +486,25 @@ def fetch_booking(conn, booking_id):
         " WHERE b.id = ?", (booking_id,)).fetchone()
 
 
+def fetch_all_logs(conn, limit=200, action=None, user_id=None):
+    """System-wide audit log across all bookings (admin only)."""
+    q = ("SELECT l.*, b.booking_code, u.full_name AS performed_by_name "
+         "FROM booking_logs l "
+         "LEFT JOIN bookings b ON b.id = l.booking_id "
+         "LEFT JOIN users u ON u.id = l.performed_by "
+         "WHERE 1=1")
+    args = []
+    if action:
+        q += " AND l.action = ?"
+        args.append(action)
+    if user_id:
+        q += " AND l.performed_by = ?"
+        args.append(user_id)
+    q += " ORDER BY l.id DESC LIMIT ?"
+    args.append(limit)
+    return conn.execute(q, args).fetchall()
+
+
 def fetch_assignments(conn, booking_id):
     """All vehicle/driver assignments for a booking."""
     return conn.execute(
