@@ -4,7 +4,7 @@ title LHC Transport Booking System
 cd /d "%~dp0"
 echo.
 echo  Starting LHC Transport Booking System...
-echo  Open http://127.0.0.1:5001 in your browser
+echo  Open http://127.0.0.1:5019 in your browser
 echo.
 if exist "C:\Program1\python.exe" (
   "C:\Program1\python.exe" app.py

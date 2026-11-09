@@ -3058,7 +3058,7 @@ if __name__ == "__main__":
     app = create_app()
     db.init_db()
     host = os.environ.get("TRANSPORT_HOST", "0.0.0.0")
-    port = int(os.environ.get("TRANSPORT_PORT", "5001"))
+    port = int(os.environ.get("TRANSPORT_PORT", "5019"))
     print(f"\n  Transport Booking System\n  Open http://{host}:{port}"
           "  (default: admin / admin123)\n")
     app.run(host=host, port=port, debug=False)
