@@ -29,6 +29,19 @@ Set these environment variables in the service manager:
 
 Install `requirements.txt`, then initialize and serve the app using Waitress, for example:
 
+## Public access via Cloudflare Tunnel (no domain required)
+
+For quick public HTTPS access without a domain:
+
+1. Download cloudflared from https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+2. Place `cloudflared.exe` in the `deployment/` folder
+3. Make sure the server is running: `python app.py` (listens on port 5019)
+4. Run `deployment\start-tunnel.ps1` (PowerShell) or `deployment\start-tunnel.bat`
+5. The tunnel URL (e.g. `https://xxx-yyy-zzz.trycloudflare.com`) is automatically saved to the database
+6. QR codes will now use the HTTPS URL for mobile access
+
+Note: The tunnel URL changes when you restart the tunnel. For a permanent URL, register a domain with Cloudflare.
+
 ```powershell
 waitress-serve --listen=127.0.0.1:5001 wsgi:app
 ```
