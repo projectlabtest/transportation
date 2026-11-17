@@ -479,6 +479,9 @@ private fun RequesterHome(
                 var bookings by remember { mutableStateOf<List<BookingUpdate>>(emptyList()) }
                 var purpose by remember { mutableStateOf("") }
                 var passengers by remember { mutableStateOf("1") }
+                var nature by remember { mutableStateOf("official") }
+                var natureMenuOpen by remember { mutableStateOf(false) }
+                var department by remember { mutableStateOf("") }
                 var pickup by remember { mutableStateOf("") }
                 var dropoff by remember { mutableStateOf("") }
                 var departureDate by remember { mutableStateOf("") }
@@ -551,6 +554,37 @@ private fun RequesterHome(
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                         modifier = Modifier.fillMaxWidth()
                                     )
+                                    Column {
+                                        OutlinedButton(onClick = { natureMenuOpen = true }) {
+                                            Text(
+                                                "Nature of trip: " +
+                                                    nature.replaceFirstChar { it.uppercase() }
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = natureMenuOpen,
+                                            onDismissRequest = { natureMenuOpen = false }
+                                        ) {
+                                            listOf("official", "personal").forEach { value ->
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(value.replaceFirstChar { it.uppercase() })
+                                                    },
+                                                    onClick = {
+                                                        nature = value
+                                                        natureMenuOpen = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                    if (nature == "official") {
+                                        OutlinedTextField(
+                                            department, { department = it },
+                                            label = { Text("Department / Account name *") },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
                                     OutlinedTextField(
                                         pickup, { pickup = it }, label = { Text("Pickup location") },
                                         modifier = Modifier.fillMaxWidth()
@@ -638,9 +672,10 @@ private fun RequesterHome(
                                             }
                                             if (purpose.isBlank() || missingDeparture
                                                 || count == null || count < 1
+                                                || (nature == "official" && department.isBlank())
                                                 || (roundtrip && returnDate.isBlank())
                                             ) {
-                                                message = "Complete purpose, passenger count, departure (or flight) date and time, and round-trip return date."
+                                                message = "Complete purpose, department for official trips, passenger count, departure (or flight) date and time, and round-trip return date."
                                             } else {
                                                 scope.launch {
                                                     loading = true
@@ -650,6 +685,8 @@ private fun RequesterHome(
                                                                 purpose = purpose.trim(),
                                                                 passengerCount = count,
                                                                 vehicleTypeNeeded = "",
+                                                                natureOfTrip = nature,
+                                                                department = if (nature == "personal") "" else department.trim(),
                                                                 pickupLocation = pickup.trim(),
                                                                 dropoffLocation = dropoff.trim(),
                                                                 departureDate = departureDate.trim(),
@@ -847,6 +884,13 @@ private fun RequesterHome(
                                         color = MaterialTheme.colorScheme.primary)
                                     Text("${booking.requesterName} · ${booking.passengerCount} passengers")
                                     Text(booking.purpose)
+                                    Text(
+                                        booking.natureOfTrip.replaceFirstChar { it.uppercase() } +
+                                            " trip" +
+                                            if (booking.department.isNotBlank()) {
+                                                " · ${booking.department}"
+                                            } else ""
+                                    )
                                     Text("${booking.pickupLocation} → ${booking.dropoffLocation}")
                                     Text("${booking.departureDate} ${booking.departureTime}")
                                     booking.vehicleName?.let {
