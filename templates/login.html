@@ -53,7 +53,7 @@
     </div>
     {% endif %}
     <div style="text-align:center;margin-top:16px;">
-      <a href="{{ url_for('download_android_app') }}" class="btn">
+      <a href="{{ url_for('download_android_app', v=apk_version) }}" class="btn">
         DOWNLOAD ANDROID APP
       </a>
       {% if is_local %}

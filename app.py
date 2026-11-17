@@ -50,7 +50,8 @@ def create_app():
     @app.context_processor
     def inject_globals():
         return {"session": session, "maps_directions_url": maps_directions_url,
-                "pickup_at_gate": pickup_is_at_gate, "maps_point": maps_point}
+                "pickup_at_gate": pickup_is_at_gate, "maps_point": maps_point,
+                "apk_version": android_apk_version(app)}
 
     register_routes(app)
     return app
@@ -266,6 +267,16 @@ def resolve_leg(get, date_key, time_key, prefix=""):
         "flight_number": (get(f"{prefix}flight_number") or "").strip().upper(),
         "flight_date": flight_date, "flight_time": flight_time,
     }, None
+
+
+def android_apk_version(app):
+    """Cache-busting token for the APK download link."""
+    apk_path = os.path.join(app.root_path, "driver-app", "app", "build",
+                            "outputs", "apk", "debug", "app-debug.apk")
+    try:
+        return int(os.path.getmtime(apk_path))
+    except OSError:
+        return 0
 
 
 def public_base_url():
@@ -771,11 +782,15 @@ def register_routes(app):
             return ("The Android APK is not built yet. Build it with "
                     "Android Studio (driver-app) and place app-debug.apk at "
                     "driver-app/app/build/outputs/apk/debug/.", 404)
-        return send_from_directory(
+        response = send_from_directory(
             apk_directory, "app-debug.apk", as_attachment=True,
             download_name="Transport.apk",
             mimetype="application/vnd.android.package-archive",
             max_age=0)
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
     @app.route("/qr/guest.png")
     def guest_booking_qr():
