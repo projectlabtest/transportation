@@ -3,4 +3,4 @@ main = "worker-proxy.js"
 compatibility_date = "2025-01-01"
 
 [vars]
-TUNNEL_HOST = "they-midlands-politicians-biz.trycloudflare.com"
+TUNNEL_HOST = "forestry-reflections-furthermore-ext.trycloudflare.com"
