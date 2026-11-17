@@ -42,6 +42,51 @@ For quick public HTTPS access without a domain:
 
 Note: The tunnel URL changes when you restart the tunnel. For a permanent URL, register a domain with Cloudflare.
 
+## Permanent public URL (Cloudflare Worker proxy)
+
+`deployment/run-tunnel.py` gives a **permanent** public URL even though the
+underlying tunnel URL changes on every restart:
+
+```
+https://transport-booking-proxy.transport-booking.workers.dev
+```
+
+How it works:
+
+```
+Phone -> Worker (permanent workers.dev URL)
+      -> Cloudflare quick tunnel (changes on restart)
+      -> local app on 127.0.0.1:5019
+```
+
+The runner script automatically repoints the Worker at the new tunnel URL and
+saves the public URL in the database so QR codes stay correct.
+
+Setup (one time):
+
+1. Create a free Cloudflare account and an API token with
+   *Workers Scripts: Edit* and *Workers: Editor*.
+2. Install the Wrangler CLI: `npm install -g wrangler`
+3. Put the token in `deployment/wrangler.toml` usage:
+
+```
+cd deployment
+set CLOUDFLARE_API_TOKEN=cfat_xxx
+set CLOUDFLARE_ACCOUNT_ID=xxxxxxxx
+wrangler deploy
+```
+
+4. Start everything:
+
+```
+cd deployment
+python run-tunnel.py cfat_xxx
+```
+
+The public URL is saved to the `public_url` app setting, which is what the QR
+code on the login page uses.
+
+
 ```powershell
 waitress-serve --listen=127.0.0.1:5001 wsgi:app
 ```

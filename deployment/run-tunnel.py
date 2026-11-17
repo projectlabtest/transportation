@@ -136,7 +136,7 @@ def main():
     except Exception as exc:
         print("Worker update failed:", exc, flush=True)
 
-    public_url = "https://" + duckdns
+    public_url = "https://" + PUBLIC_HOST
     save_public_url(public_url)
     print("Public URL saved:", public_url, flush=True)
     print("Direct tunnel URL:", tunnel_url, flush=True)
