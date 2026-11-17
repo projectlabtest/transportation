@@ -479,7 +479,6 @@ private fun RequesterHome(
                 var bookings by remember { mutableStateOf<List<BookingUpdate>>(emptyList()) }
                 var purpose by remember { mutableStateOf("") }
                 var passengers by remember { mutableStateOf("1") }
-                var vehicleType by remember { mutableStateOf("Van") }
                 var pickup by remember { mutableStateOf("") }
                 var dropoff by remember { mutableStateOf("") }
                 var departureDate by remember { mutableStateOf("") }
@@ -498,7 +497,6 @@ private fun RequesterHome(
                     "international" to "International (driver leaves 4 hours before)"
                 )
                 var remarks by remember { mutableStateOf("") }
-                var typeMenuOpen by remember { mutableStateOf(false) }
                 var loading by remember { mutableStateOf(false) }
                 var message by remember { mutableStateOf<String?>(null) }
 
@@ -553,25 +551,6 @@ private fun RequesterHome(
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                         modifier = Modifier.fillMaxWidth()
                                     )
-                                    Column {
-                                        OutlinedButton(onClick = { typeMenuOpen = true }) {
-                                            Text("Vehicle type: $vehicleType")
-                                        }
-                                        DropdownMenu(
-                                            expanded = typeMenuOpen,
-                                            onDismissRequest = { typeMenuOpen = false }
-                                        ) {
-                                            listOf("Van", "Sedan", "SUV", "Bus").forEach { type ->
-                                                DropdownMenuItem(
-                                                    text = { Text(type) },
-                                                    onClick = {
-                                                        vehicleType = type
-                                                        typeMenuOpen = false
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    }
                                     OutlinedTextField(
                                         pickup, { pickup = it }, label = { Text("Pickup location") },
                                         modifier = Modifier.fillMaxWidth()
@@ -670,7 +649,7 @@ private fun RequesterHome(
                                                             BookingRequest(
                                                                 purpose = purpose.trim(),
                                                                 passengerCount = count,
-                                                                vehicleTypeNeeded = vehicleType,
+                                                                vehicleTypeNeeded = "",
                                                                 pickupLocation = pickup.trim(),
                                                                 dropoffLocation = dropoff.trim(),
                                                                 departureDate = departureDate.trim(),
@@ -868,7 +847,6 @@ private fun RequesterHome(
                                         color = MaterialTheme.colorScheme.primary)
                                     Text("${booking.requesterName} · ${booking.passengerCount} passengers")
                                     Text(booking.purpose)
-                                    Text("Vehicle needed: ${booking.vehicleTypeNeeded}")
                                     Text("${booking.pickupLocation} → ${booking.dropoffLocation}")
                                     Text("${booking.departureDate} ${booking.departureTime}")
                                     booking.vehicleName?.let {
@@ -950,7 +928,8 @@ private fun RequesterHome(
                         CoordinatorAssignmentDialog(
                             booking = booking,
                             vehicles = currentResources.vehicles.filter {
-                                it.vehicleType == booking.vehicleTypeNeeded &&
+                                (booking.vehicleTypeNeeded.isBlank() ||
+                                    it.vehicleType == booking.vehicleTypeNeeded) &&
                                     it.capacity >= booking.passengerCount &&
                                     it.status !in listOf("maintenance", "inactive")
                             },
@@ -1013,7 +992,13 @@ private fun RequesterHome(
                     title = { Text("Assign ${booking.bookingCode}") },
                     text = {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("${booking.vehicleTypeNeeded} · ${booking.passengerCount} passengers")
+                            Text(
+                                if (booking.vehicleTypeNeeded.isBlank()) {
+                                    "${booking.passengerCount} passengers"
+                                } else {
+                                    "${booking.vehicleTypeNeeded} · ${booking.passengerCount} passengers"
+                                }
+                            )
                             Column {
                                 OutlinedButton(onClick = { vehicleMenu = true }) {
                                     val selected = vehicles.firstOrNull { it.id == vehicleId }

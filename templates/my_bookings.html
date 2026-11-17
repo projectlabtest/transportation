@@ -11,7 +11,7 @@
   <table>
     <thead>
       <tr>
-        <th>Code</th><th>Purpose</th><th>Type</th><th>Passengers</th>
+        <th>Code</th><th>Purpose</th><th>Passengers</th>
         <th>Departure</th><th>Assigned Vehicle</th><th>Status</th><th></th>
       </tr>
     </thead>
@@ -26,7 +26,6 @@
             {% if b.department %} · {{ b.department }}{% endif %}
           </span>
         </td>
-        <td><span class="pill">{{ b.vehicle_type_needed or '—' }}</span></td>
         <td>{{ b.passenger_count }}</td>
         <td class="small">{{ b.departure_date }} {{ b.departure_time }}</td>
         <td class="small">
@@ -72,7 +71,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="8" class="hint">You have no bookings yet. Click + NEW BOOKING to start.</td></tr>
+      <tr><td colspan="7" class="hint">You have no bookings yet. Click + NEW BOOKING to start.</td></tr>
       {% endfor %}
     </tbody>
   </table>

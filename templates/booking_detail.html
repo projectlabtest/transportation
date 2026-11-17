@@ -53,7 +53,9 @@
       <tr><th>Guest Phone</th><td>{{ b.guest_phone or '—' }}</td></tr>
       {% endif %}
       <tr><th>Passengers</th><td>{{ b.passenger_count }}</td></tr>
+      {% if user.role in ('admin', 'coordinator') %}
       <tr><th>Vehicle Type Needed</th><td><span class="pill">{{ b.vehicle_type_needed or '— (coordinator to set)' }}</span></td></tr>
+      {% endif %}
       <tr><th>Pickup</th><td>
         {{ b.pickup_location or '—' }}
         {% if b.pickup_location and b.pickup_lat is not none %}
