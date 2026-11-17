@@ -3,4 +3,4 @@ main = "worker-proxy.js"
 compatibility_date = "2025-01-01"
 
 [vars]
-TUNNEL_HOST = "lightning-charm-encryption-affiliation.trycloudflare.com"
+TUNNEL_HOST = "cancelled-hypothesis-director-photographer.trycloudflare.com"

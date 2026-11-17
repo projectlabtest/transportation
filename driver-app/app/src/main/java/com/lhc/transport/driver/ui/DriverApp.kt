@@ -45,7 +45,9 @@ import androidx.core.content.ContextCompat
 import com.lhc.transport.driver.data.BookingUpdate
 import com.lhc.transport.driver.data.BookingRequest
 import com.lhc.transport.driver.data.CoordinatorResources
+import com.lhc.transport.driver.data.DEFAULT_SERVER_URL
 import com.lhc.transport.driver.data.DriverApiService
+import com.lhc.transport.driver.data.normalizeServerUrl
 import com.lhc.transport.driver.data.ReviewRequest
 import com.lhc.transport.driver.data.VehicleOption
 import com.lhc.transport.driver.data.DriverOption
@@ -65,7 +67,7 @@ fun DriverApp() {
 private fun DriverLoginScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var serverUrl by remember { mutableStateOf("") }
+    var serverUrl by remember { mutableStateOf(DEFAULT_SERVER_URL) }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var token by remember { mutableStateOf<String?>(null) }
@@ -220,13 +222,13 @@ private fun DriverLoginScreen() {
         ) {
             Text("LHC Transport", style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.height(8.dp))
-            Text("Sign in with your active account. Driver, requester, and coordinator access is available. The server must use HTTPS.")
+            Text("Sign in with your active account. Driver, requester, and coordinator access is available. The server is already set up for you.")
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(
                 value = serverUrl,
                 onValueChange = { serverUrl = it },
-                label = { Text("HTTPS server URL") },
-                placeholder = { Text("https://transport.example.com") },
+                label = { Text("Server (optional)") },
+                placeholder = { Text(DEFAULT_SERVER_URL) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -250,8 +252,7 @@ private fun DriverLoginScreen() {
             )
             Spacer(Modifier.height(16.dp))
             Button(
-                enabled = !loading && username.isNotBlank() && password.isNotBlank() &&
-                    serverUrl.startsWith("https://", ignoreCase = true),
+                enabled = !loading && username.isNotBlank() && password.isNotBlank(),
                 onClick = {
                     loading = true
                     message = null
@@ -273,6 +274,8 @@ private fun DriverLoginScreen() {
                                 message = when (response.code()) {
                                     401 -> "Username or password is incorrect."
                                     403 -> "This account cannot use the mobile app."
+                                    404 -> "Server not found (404). The app server address is wrong."
+                                    530 -> "The server is offline right now. Ask the admin to start it."
                                     else -> "Login failed (${response.code()})."
                                 }
                             }

@@ -12,11 +12,36 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 import java.util.concurrent.TimeUnit
 
+/** Public server used when the user leaves the server URL blank. */
+const val DEFAULT_SERVER_URL = "https://transport-booking-proxy.transport-booking.workers.dev"
+
+/**
+ * Turns whatever the user typed into a bare base URL:
+ * adds https:// when missing and drops paths such as "/login".
+ */
+fun normalizeServerUrl(raw: String?): String {
+    val value = (raw ?: "").trim()
+    if (value.isEmpty()) return DEFAULT_SERVER_URL
+    val withScheme = when {
+        value.startsWith("https://", ignoreCase = true) -> value
+        value.startsWith("http://", ignoreCase = true) ->
+            "https://" + value.substring("http://".length)
+        else -> "https://$value"
+    }
+    return try {
+        val uri = java.net.URI(withScheme)
+        val host = uri.host ?: return DEFAULT_SERVER_URL
+        if (uri.port > 0) "https://$host:${uri.port}" else "https://$host"
+    } catch (error: Exception) {
+        DEFAULT_SERVER_URL
+    }
+}
+
 class DriverApiService(baseUrl: String, token: String? = null) {
     private val api: DriverApi
 
     init {
-        val normalizedUrl = baseUrl.trim().trimEnd('/') + "/"
+        val normalizedUrl = normalizeServerUrl(baseUrl).trimEnd('/') + "/"
         require(normalizedUrl.startsWith("https://", ignoreCase = true)) {
             "The driver app requires an HTTPS server URL."
         }
