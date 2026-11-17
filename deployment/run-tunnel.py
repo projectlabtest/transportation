@@ -136,7 +136,10 @@ def main():
     except Exception as exc:
         print("Worker update failed:", exc, flush=True)
 
-    public_url = "https://" + PUBLIC_HOST
+    # The guest QR code is local-network only, so point it at the LAN
+    # address instead of the public workers.dev URL.
+    public_url = os.environ.get("TRANSPORT_PUBLIC_URL",
+                                "http://192.168.50.9:5019").rstrip("/")
     save_public_url(public_url)
     print("Public URL saved:", public_url, flush=True)
     print("Direct tunnel URL:", tunnel_url, flush=True)

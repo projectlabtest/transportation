@@ -34,10 +34,13 @@
       <a href="{{ url_for('register') }}" class="btn small ok">
         CREATE ACCOUNT (REQUESTER)
       </a>
+      {% if is_local %}
       <a href="{{ url_for('guest_booking_form') }}" class="btn small">
         BOOK AS GUEST (NO ACCOUNT)
       </a>
+      {% endif %}
     </div>
+    {% if is_local %}
     <div style="text-align:center;margin-top:16px; background:#fff;
                 padding:16px; border-radius:12px; max-width:320px; margin-left:auto; margin-right:auto;">
       <p class="hint" style="color:#333;">Visitors: scan this QR code to open the booking form</p>
@@ -46,14 +49,18 @@
       <p style="font-size:12px; color:#666; margin-top:8px;">
         Or open: <a href="{{ url_for('guest_booking_form') }}">Guest Booking Form</a>
       </p>
+      <p class="hint" style="color:#666; margin-top:8px;">Local network only.</p>
     </div>
+    {% endif %}
     <div style="text-align:center;margin-top:16px;">
       <a href="{{ url_for('download_android_app') }}" class="btn">
         DOWNLOAD ANDROID APP
       </a>
+      {% if is_local %}
       <a href="{{ url_for('scan_qr') }}" class="btn">
         SCAN QR CODE
       </a>
+      {% endif %}
     </div>
   </div>
 </div>

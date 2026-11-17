@@ -7,6 +7,7 @@ import smtplib
 import time
 import hashlib
 import io
+import ipaddress
 import secrets
 from datetime import datetime, timedelta
 from email.message import EmailMessage
@@ -288,6 +289,25 @@ def public_base_url():
             value = "http://" + value
         return value.rstrip("/")
     return request.url_root.rstrip("/")
+
+
+def is_local_request():
+    """True when the request came from the local network, not the internet.
+
+    Requests proxied through Cloudflare carry CF-Connecting-IP / CF-Ray, so
+    they are always treated as public even though the tunnel connects from
+    127.0.0.1 on this machine.
+    """
+    if request.headers.get("CF-Connecting-IP") or request.headers.get("CF-Ray"):
+        return False
+    if request.headers.get("X-Forwarded-For"):
+        return False
+    addr = request.remote_addr or ""
+    try:
+        ip = ipaddress.ip_address(addr)
+    except ValueError:
+        return False
+    return ip.is_private or ip.is_loopback
 
 
 def maps_directions_url(destination, origin=None):
@@ -759,6 +779,8 @@ def register_routes(app):
 
     @app.route("/qr/guest.png")
     def guest_booking_qr():
+        if not is_local_request():
+            return ("Not available on the public network.", 404)
         import qrcode
         url = public_base_url() + url_for("guest_booking_form")
         qr = qrcode.QRCode(version=1, box_size=10, border=4)
@@ -794,6 +816,8 @@ def register_routes(app):
 
     @app.route("/scan")
     def scan_qr():
+        if not is_local_request():
+            return ("Scanning is only available on the local network.", 403)
         return render_template("scan_qr.html")
 
     @app.route("/service-worker.js")
@@ -829,7 +853,8 @@ def register_routes(app):
                 flash(f"Welcome, {row['full_name']}!", "ok")
                 return redirect(url_for("home"))
             flash("Invalid username or password.", "error")
-        return render_template("login.html", current=session.get("user"))
+        return render_template("login.html", current=session.get("user"),
+                               is_local=is_local_request())
 
     @app.route("/register", methods=["GET", "POST"])
     def register():
@@ -2470,6 +2495,9 @@ def register_routes(app):
     # ---------------- Guest (visitor) booking, no account needed ---------------- #
     @app.route("/bookings/guest", methods=["GET", "POST"])
     def guest_booking_form():
+        if not is_local_request():
+            return ("Guest booking is only available on the local network.",
+                    403)
         conn = get_db()
         if request.method == "POST":
             guest_name = request.form.get("guest_name", "").strip()

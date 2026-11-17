@@ -33,7 +33,9 @@
 
   <div class="panel">
     <h2>Guest Booking QR Code</h2>
-    <p class="hint">Visitors scan this QR code to open the guest booking form.</p>
+    <p class="hint">Visitors scan this QR code to open the guest booking form.
+      <br><strong>Local network only</strong> - this page and the guest booking
+      form are not reachable from the public internet.</p>
     <img src="{{ url_for('guest_booking_qr') }}" alt="Guest booking QR code"
          width="320" height="320" style="margin:12px auto;display:block;
          background:#fff; padding:12px; border-radius:8px;">
