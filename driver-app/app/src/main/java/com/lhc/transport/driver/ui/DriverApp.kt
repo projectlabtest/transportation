@@ -220,7 +220,7 @@ private fun DriverLoginScreen() {
             modifier = Modifier.fillMaxSize().padding(24.dp),
             verticalArrangement = Arrangement.Center
         ) {
-            Text("LHC Transport", style = MaterialTheme.typography.headlineMedium)
+            Text("Transport", style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.height(8.dp))
             Text("Sign in with your active account. Driver, requester, and coordinator access is available. The server is already set up for you.")
             Spacer(Modifier.height(16.dp))
